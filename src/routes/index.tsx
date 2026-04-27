@@ -18,13 +18,19 @@ export const Route = createFileRoute("/")({
 });
 
 function IndexPage() {
-  const { programs } = useRenstra();
+  const { programs, isLoading } = useRenstra();
   return (
     <AppShell
       title="Executive Overview"
       subtitle="Ringkasan capaian Rencana Strategis periode 2025 — 2029"
     >
-      <ExecutiveOverview programs={programs} />
+      {isLoading ? (
+        <div className="flex h-[60vh] items-center justify-center text-sm text-muted-foreground">
+          Memuat data Renstra…
+        </div>
+      ) : (
+        <ExecutiveOverview programs={programs} />
+      )}
     </AppShell>
   );
 }
