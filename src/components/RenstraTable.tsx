@@ -182,7 +182,7 @@ export function RenstraTable() {
               <AddProgramDialog onAdd={addProgram} />
               <Button variant="outline" size="sm" onClick={reset}>
                 <RotateCcw className="h-4 w-4 mr-2" />
-                Reset Data
+                Refresh
               </Button>
               <Button size="sm" onClick={exportExcel}>
                 <Download className="h-4 w-4 mr-2" />

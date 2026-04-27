@@ -1,135 +1,215 @@
-import { useEffect, useState, useCallback } from "react";
-import { INITIAL_PROGRAMS, type Program, type Year, emptyValues } from "@/lib/renstra-data";
+import { useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { YEARS, type Program, type Year, emptyValues } from "@/lib/renstra-data";
+import { toast } from "sonner";
 
-const STORAGE_KEY = "renstra-data-v1";
+const QK = ["renstra", "all"] as const;
+
+async function fetchAll(): Promise<Program[]> {
+  const [progRes, sasRes, indRes, valRes] = await Promise.all([
+    supabase.from("renstra_programs").select("*").order("urutan").order("created_at"),
+    supabase.from("renstra_sasaran").select("*").order("urutan").order("created_at"),
+    supabase.from("renstra_indikator").select("*").order("urutan").order("created_at"),
+    supabase.from("renstra_yearly_values").select("*"),
+  ]);
+
+  if (progRes.error) throw progRes.error;
+  if (sasRes.error) throw sasRes.error;
+  if (indRes.error) throw indRes.error;
+  if (valRes.error) throw valRes.error;
+
+  const valuesByInd = new Map<string, ReturnType<typeof emptyValues>>();
+  for (const v of valRes.data ?? []) {
+    let map = valuesByInd.get(v.indikator_id);
+    if (!map) {
+      map = emptyValues();
+      valuesByInd.set(v.indikator_id, map);
+    }
+    if (YEARS.includes(v.tahun as Year)) {
+      map[v.tahun as Year] = {
+        target: Number(v.target) || 0,
+        actual: Number(v.actual) || 0,
+        budget: Number(v.budget) || 0,
+      };
+    }
+  }
+
+  const indBySasaran = new Map<string, Program["sasaran"][number]["indikator"]>();
+  for (const i of indRes.data ?? []) {
+    const arr = indBySasaran.get(i.sasaran_id) ?? [];
+    arr.push({
+      id: i.id,
+      nama: i.nama,
+      satuan: i.satuan ?? "",
+      values: valuesByInd.get(i.id) ?? emptyValues(),
+    });
+    indBySasaran.set(i.sasaran_id, arr);
+  }
+
+  const sasByProgram = new Map<string, Program["sasaran"]>();
+  for (const s of sasRes.data ?? []) {
+    const arr = sasByProgram.get(s.program_id) ?? [];
+    arr.push({
+      id: s.id,
+      nama: s.nama,
+      indikator: indBySasaran.get(s.id) ?? [],
+    });
+    sasByProgram.set(s.program_id, arr);
+  }
+
+  return (progRes.data ?? []).map((p) => ({
+    id: p.id,
+    nama: p.nama,
+    sasaran: sasByProgram.get(p.id) ?? [],
+  }));
+}
 
 export function useRenstra() {
-  const [programs, setPrograms] = useState<Program[]>(INITIAL_PROGRAMS);
-  const [hydrated, setHydrated] = useState(false);
+  const qc = useQueryClient();
+  const { data: programs = [], isLoading } = useQuery({
+    queryKey: QK,
+    queryFn: fetchAll,
+    staleTime: 30_000,
+  });
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) setPrograms(JSON.parse(raw));
-    } catch {
-      // ignore
-    }
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (hydrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(programs));
-  }, [programs, hydrated]);
+  const invalidate = () => qc.invalidateQueries({ queryKey: QK });
 
   const updateValue = useCallback(
-    (
-      programId: string,
-      sasaranId: string,
+    async (
+      _programId: string,
+      _sasaranId: string,
       indikatorId: string,
       year: Year,
       field: "target" | "actual" | "budget",
       value: number,
     ) => {
-      setPrograms((prev) =>
-        prev.map((p) =>
-          p.id !== programId
-            ? p
-            : {
-                ...p,
-                sasaran: p.sasaran.map((s) =>
-                  s.id !== sasaranId
-                    ? s
-                    : {
-                        ...s,
-                        indikator: s.indikator.map((i) =>
-                          i.id !== indikatorId
-                            ? i
-                            : {
-                                ...i,
-                                values: {
-                                  ...i.values,
-                                  [year]: { ...i.values[year], [field]: value },
-                                },
-                              },
-                        ),
-                      },
-                ),
-              },
-        ),
+      // Optimistic update
+      qc.setQueryData<Program[]>(QK, (prev) =>
+        (prev ?? []).map((p) => ({
+          ...p,
+          sasaran: p.sasaran.map((s) => ({
+            ...s,
+            indikator: s.indikator.map((i) =>
+              i.id !== indikatorId
+                ? i
+                : {
+                    ...i,
+                    values: {
+                      ...i.values,
+                      [year]: { ...i.values[year], [field]: value },
+                    },
+                  },
+            ),
+          })),
+        })),
       );
+
+      const { error } = await supabase
+        .from("renstra_yearly_values")
+        .upsert(
+          {
+            indikator_id: indikatorId,
+            tahun: year,
+            [field]: value,
+          } as never,
+          { onConflict: "indikator_id,tahun" },
+        );
+
+      if (error) {
+        toast.error("Gagal menyimpan: " + error.message);
+        invalidate();
+      }
     },
-    [],
+    [qc],
   );
 
-  const addProgram = useCallback((nama: string) => {
-    setPrograms((prev) => [...prev, { id: `P${Date.now()}`, nama, sasaran: [] }]);
-  }, []);
-
-  const addSasaran = useCallback((programId: string, nama: string) => {
-    setPrograms((prev) =>
-      prev.map((p) =>
-        p.id !== programId
-          ? p
-          : { ...p, sasaran: [...p.sasaran, { id: `S${Date.now()}`, nama, indikator: [] }] },
-      ),
-    );
-  }, []);
-
-  const addIndikator = useCallback(
-    (programId: string, sasaranId: string, nama: string, satuan: string) => {
-      setPrograms((prev) =>
-        prev.map((p) =>
-          p.id !== programId
-            ? p
-            : {
-                ...p,
-                sasaran: p.sasaran.map((s) =>
-                  s.id !== sasaranId
-                    ? s
-                    : {
-                        ...s,
-                        indikator: [
-                          ...s.indikator,
-                          { id: `I${Date.now()}`, nama, satuan, values: emptyValues() },
-                        ],
-                      },
-                ),
-              },
-        ),
-      );
+  const addProgramMut = useMutation({
+    mutationFn: async (nama: string) => {
+      const { error } = await supabase.from("renstra_programs").insert({ nama });
+      if (error) throw error;
     },
-    [],
-  );
-
-  const deleteIndikator = useCallback(
-    (programId: string, sasaranId: string, indikatorId: string) => {
-      setPrograms((prev) =>
-        prev.map((p) =>
-          p.id !== programId
-            ? p
-            : {
-                ...p,
-                sasaran: p.sasaran.map((s) =>
-                  s.id !== sasaranId
-                    ? s
-                    : { ...s, indikator: s.indikator.filter((i) => i.id !== indikatorId) },
-                ),
-              },
-        ),
-      );
+    onSuccess: () => {
+      toast.success("Program ditambahkan");
+      invalidate();
     },
-    [],
-  );
+    onError: (e: Error) => toast.error(e.message),
+  });
 
-  const reset = useCallback(() => setPrograms(INITIAL_PROGRAMS), []);
+  const addSasaranMut = useMutation({
+    mutationFn: async ({ programId, nama }: { programId: string; nama: string }) => {
+      const { error } = await supabase
+        .from("renstra_sasaran")
+        .insert({ program_id: programId, nama });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Sasaran ditambahkan");
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const addIndikatorMut = useMutation({
+    mutationFn: async ({
+      sasaranId,
+      nama,
+      satuan,
+    }: {
+      sasaranId: string;
+      nama: string;
+      satuan: string;
+    }) => {
+      const { data: ind, error } = await supabase
+        .from("renstra_indikator")
+        .insert({ sasaran_id: sasaranId, nama, satuan })
+        .select()
+        .single();
+      if (error) throw error;
+      // Seed empty yearly rows
+      const rows = YEARS.map((y) => ({
+        indikator_id: ind.id,
+        tahun: y,
+        target: 0,
+        actual: 0,
+        budget: 0,
+      }));
+      const { error: vErr } = await supabase.from("renstra_yearly_values").insert(rows);
+      if (vErr) throw vErr;
+    },
+    onSuccess: () => {
+      toast.success("Indikator ditambahkan");
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteIndikatorMut = useMutation({
+    mutationFn: async (indikatorId: string) => {
+      const { error } = await supabase
+        .from("renstra_indikator")
+        .delete()
+        .eq("id", indikatorId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Indikator dihapus");
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   return {
     programs,
+    isLoading,
     updateValue,
-    addProgram,
-    addSasaran,
-    addIndikator,
-    deleteIndikator,
-    reset,
+    addProgram: (nama: string) => addProgramMut.mutate(nama),
+    addSasaran: (programId: string, nama: string) =>
+      addSasaranMut.mutate({ programId, nama }),
+    addIndikator: (_programId: string, sasaranId: string, nama: string, satuan: string) =>
+      addIndikatorMut.mutate({ sasaranId, nama, satuan }),
+    deleteIndikator: (_programId: string, _sasaranId: string, indikatorId: string) =>
+      deleteIndikatorMut.mutate(indikatorId),
+    reset: () => invalidate(),
   };
 }
