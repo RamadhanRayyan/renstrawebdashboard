@@ -14,7 +14,144 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      renstra_indikator: {
+        Row: {
+          created_at: string
+          id: string
+          nama: string
+          sasaran_id: string
+          satuan: string
+          updated_at: string
+          urutan: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nama: string
+          sasaran_id: string
+          satuan?: string
+          updated_at?: string
+          urutan?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nama?: string
+          sasaran_id?: string
+          satuan?: string
+          updated_at?: string
+          urutan?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renstra_indikator_sasaran_id_fkey"
+            columns: ["sasaran_id"]
+            isOneToOne: false
+            referencedRelation: "renstra_sasaran"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      renstra_programs: {
+        Row: {
+          created_at: string
+          id: string
+          nama: string
+          updated_at: string
+          urutan: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nama: string
+          updated_at?: string
+          urutan?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nama?: string
+          updated_at?: string
+          urutan?: number
+        }
+        Relationships: []
+      }
+      renstra_sasaran: {
+        Row: {
+          created_at: string
+          id: string
+          nama: string
+          program_id: string
+          updated_at: string
+          urutan: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          nama: string
+          program_id: string
+          updated_at?: string
+          urutan?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          nama?: string
+          program_id?: string
+          updated_at?: string
+          urutan?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renstra_sasaran_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "renstra_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      renstra_yearly_values: {
+        Row: {
+          actual: number
+          budget: number
+          created_at: string
+          id: string
+          indikator_id: string
+          tahun: number
+          target: number
+          updated_at: string
+        }
+        Insert: {
+          actual?: number
+          budget?: number
+          created_at?: string
+          id?: string
+          indikator_id: string
+          tahun: number
+          target?: number
+          updated_at?: string
+        }
+        Update: {
+          actual?: number
+          budget?: number
+          created_at?: string
+          id?: string
+          indikator_id?: string
+          tahun?: number
+          target?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "renstra_yearly_values_indikator_id_fkey"
+            columns: ["indikator_id"]
+            isOneToOne: false
+            referencedRelation: "renstra_indikator"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
