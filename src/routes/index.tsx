@@ -1,26 +1,30 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AppShell } from "@/components/AppShell";
+import { ExecutiveOverview } from "@/components/ExecutiveOverview";
+import { useRenstra } from "@/hooks/use-renstra";
 
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "Executive Overview — Renstra Monitoring 2025-2029" },
+      {
+        name: "description",
+        content:
+          "Dashboard eksekutif monitoring Renstra 2025-2029: capaian indikator, utilisasi anggaran, dan tren tahunan.",
+      },
+    ],
+  }),
+  component: IndexPage,
 });
 
-// IMPORTANT: Replace this placeholder. For sites with multiple pages (About, Services, Contact, etc.),
-// create separate route files (about.tsx, services.tsx, contact.tsx) — don't put all pages in this file.
-function PlaceholderIndex() {
+function IndexPage() {
+  const { programs } = useRenstra();
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
+    <AppShell
+      title="Executive Overview"
+      subtitle="Ringkasan capaian Rencana Strategis periode 2025 — 2029"
     >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+      <ExecutiveOverview programs={programs} />
+    </AppShell>
   );
-}
-
-function Index() {
-  return <PlaceholderIndex />;
 }
