@@ -125,11 +125,13 @@ export function ExecutiveOverview({ programs }: Props) {
   return (
     <div className="space-y-8">
       {/* Filter bar */}
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-muted-foreground">Filter Program</span>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 min-w-0 flex-1">
+          <span className="text-xs sm:text-sm text-muted-foreground shrink-0">
+            Filter Program
+          </span>
           <Select value={programFilter} onValueChange={setProgramFilter}>
-            <SelectTrigger className="w-[320px] bg-card">
+            <SelectTrigger className="w-full sm:w-[320px] bg-card">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -142,13 +144,13 @@ export function ExecutiveOverview({ programs }: Props) {
             </SelectContent>
           </Select>
         </div>
-        <Badge variant="secondary" className="font-mono text-xs">
+        <Badge variant="secondary" className="font-mono text-xs self-start sm:self-auto">
           Periode 2025 — 2029
         </Badge>
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <KpiCard
           icon={<Activity className="h-4 w-4" />}
           label="Total Program"
@@ -178,7 +180,7 @@ export function ExecutiveOverview({ programs }: Props) {
       </div>
 
       {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
         <Card className="lg:col-span-2 shadow-card">
           <CardHeader className="pb-2">
             <CardTitle className="text-base">Tren Capaian Tahunan (%)</CardTitle>
@@ -264,15 +266,23 @@ function KpiCard({
 }) {
   return (
     <Card className="shadow-card border-border/70">
-      <CardContent className="pt-5 pb-5">
+      <CardContent className="pt-4 pb-4 sm:pt-5 sm:pb-5">
         <div className="flex items-center gap-2 text-muted-foreground">
-          <div className="h-7 w-7 rounded-md bg-accent/10 text-accent flex items-center justify-center">
+          <div className="h-7 w-7 rounded-md bg-accent/10 text-accent flex items-center justify-center shrink-0">
             {icon}
           </div>
-          <span className="text-xs font-medium uppercase tracking-wider">{label}</span>
+          <span className="text-[10px] sm:text-xs font-medium uppercase tracking-wider truncate">
+            {label}
+          </span>
         </div>
-        <div className="mt-3 text-3xl font-semibold tracking-tight text-foreground">{value}</div>
-        {sub && <div className="mt-1 text-xs text-muted-foreground">{sub}</div>}
+        <div className="mt-2 sm:mt-3 text-xl sm:text-2xl lg:text-3xl font-semibold tracking-tight text-foreground break-words">
+          {value}
+        </div>
+        {sub && (
+          <div className="mt-1 text-[11px] sm:text-xs text-muted-foreground line-clamp-2">
+            {sub}
+          </div>
+        )}
         {progress !== undefined && (
           <Progress value={progress} className="mt-3 h-1.5" />
         )}
