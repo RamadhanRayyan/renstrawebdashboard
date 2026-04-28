@@ -136,17 +136,17 @@ export function RenstraTable() {
       {/* Filters & actions */}
       <Card className="shadow-elegant">
         <CardContent className="py-4">
-          <div className="flex flex-col lg:flex-row lg:items-end gap-3 justify-between">
-            <div className="flex flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-end gap-3">
               <div className="space-y-1.5">
-                <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+                <Label className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">
                   Tahun
                 </Label>
                 <Select
                   value={String(yearFilter)}
                   onValueChange={(v) => setYearFilter(v === "all" ? "all" : (Number(v) as Year))}
                 >
-                  <SelectTrigger className="w-[140px]">
+                  <SelectTrigger className="w-full sm:w-[140px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -159,12 +159,12 @@ export function RenstraTable() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs uppercase tracking-wider text-muted-foreground">
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                <Label className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">
                   Program
                 </Label>
                 <Select value={programFilter} onValueChange={setProgramFilter}>
-                  <SelectTrigger className="w-[320px]">
+                  <SelectTrigger className="w-full sm:w-[320px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -178,7 +178,7 @@ export function RenstraTable() {
                 </Select>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <AddProgramDialog onAdd={addProgram} />
               <Button variant="outline" size="sm" onClick={reset}>
                 <RotateCcw className="h-4 w-4 mr-2" />
@@ -186,16 +186,17 @@ export function RenstraTable() {
               </Button>
               <Button size="sm" onClick={exportExcel}>
                 <Download className="h-4 w-4 mr-2" />
-                Export Excel
+                <span className="hidden sm:inline">Export Excel</span>
+                <span className="sm:hidden">Export</span>
               </Button>
             </div>
           </div>
 
           {/* Legend */}
-          <div className="flex flex-wrap items-center gap-4 mt-4 pt-4 border-t border-border">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-4 border-t border-border">
             <span className="text-xs text-muted-foreground">Status capaian:</span>
             <LegendDot className="bg-success" label="≥ 100% Tercapai" />
-            <LegendDot className="bg-warning" label="75% – 99% Hampir tercapai" />
+            <LegendDot className="bg-warning" label="75% – 99% Hampir" />
             <LegendDot className="bg-danger" label="< 75% Kurang" />
           </div>
         </CardContent>
