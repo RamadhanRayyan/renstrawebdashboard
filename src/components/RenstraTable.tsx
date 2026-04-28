@@ -68,6 +68,15 @@ const STATUS_LABEL: Record<string, string> = {
   neutral: "—",
 };
 
+function compactIDR(n: number): string {
+  if (!n) return "—";
+  if (n >= 1_000_000_000_000) return `${(n / 1_000_000_000_000).toFixed(1)}T`;
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}M`;
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}jt`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}rb`;
+  return String(n);
+}
+
 export function RenstraTable() {
   const {
     programs,
@@ -205,25 +214,28 @@ export function RenstraTable() {
       {/* Hierarchical table */}
       <Card className="shadow-card overflow-hidden">
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-[1200px]">
             <TableHeader>
               <TableRow className="bg-muted/60 hover:bg-muted/60">
-                <TableHead className="w-[320px] text-foreground font-semibold">
+                <TableHead className="w-[300px] text-foreground font-semibold sticky left-0 bg-muted/60 z-10">
                   Indikator Kinerja
                 </TableHead>
                 <TableHead className="w-[80px] text-foreground font-semibold">Satuan</TableHead>
                 {yearsToShow.map((y) => (
-                  <TableHead key={y} className="text-center border-l border-border">
-                    <div className="font-semibold text-foreground">{y}</div>
-                    <div className="grid grid-cols-4 gap-1 mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">
-                      <span>Target</span>
-                      <span>Real.</span>
-                      <span>Cap.</span>
-                      <span>Pagu</span>
+                  <TableHead
+                    key={y}
+                    className="text-center border-l border-border min-w-[180px]"
+                  >
+                    <div className="font-semibold text-foreground py-0.5">{y}</div>
+                    <div className="grid grid-cols-4 gap-1 mt-1 text-[10px] uppercase tracking-wider text-muted-foreground font-normal">
+                      <span className="text-center">Tgt</span>
+                      <span className="text-center">Real</span>
+                      <span className="text-center">Cap</span>
+                      <span className="text-center">Pagu</span>
                     </div>
                   </TableHead>
                 ))}
-                <TableHead className="w-[110px] text-right text-foreground font-semibold">
+                <TableHead className="w-[100px] text-right text-foreground font-semibold sticky right-0 bg-muted/60 z-10">
                   Aksi
                 </TableHead>
               </TableRow>
@@ -414,7 +426,7 @@ function SasaranBlock({
 
       {sasaran.indikator.map((ind) => (
         <TableRow key={ind.id} className="hover:bg-muted/20">
-          <TableCell className="pl-12">
+          <TableCell className="pl-12 sticky left-0 bg-card z-[1]">
             <div className="text-sm font-medium text-foreground">{ind.nama}</div>
           </TableCell>
           <TableCell className="text-xs text-muted-foreground">{ind.satuan}</TableCell>
@@ -423,23 +435,30 @@ function SasaranBlock({
             const c = capaian(v.actual, v.target);
             const status = getStatus(v.actual, v.target);
             return (
-              <TableCell key={y} className="border-l border-border p-2">
-                <div className="grid grid-cols-4 gap-1 text-xs text-center items-center">
-                  <span className="font-mono text-foreground">{v.target || "—"}</span>
-                  <span className="font-mono text-foreground">{v.actual || "—"}</span>
+              <TableCell key={y} className="border-l border-border p-2 align-middle">
+                <div className="grid grid-cols-4 gap-1.5 text-xs items-center">
+                  <span className="font-mono text-foreground text-center tabular-nums">
+                    {v.target || "—"}
+                  </span>
+                  <span className="font-mono text-foreground text-center tabular-nums">
+                    {v.actual || "—"}
+                  </span>
                   <span
-                    className={`font-mono px-1.5 py-0.5 rounded text-[11px] border ${STATUS_CLASS[status]}`}
+                    className={`font-mono px-1 py-0.5 rounded text-[10px] border text-center leading-tight ${STATUS_CLASS[status]}`}
                   >
                     {v.target ? `${c.toFixed(0)}%` : "—"}
                   </span>
-                  <span className="font-mono text-[10px] text-muted-foreground truncate" title={formatIDR(v.budget)}>
-                    {v.budget ? formatIDR(v.budget) : "—"}
+                  <span
+                    className="font-mono text-[10px] text-muted-foreground text-center truncate"
+                    title={formatIDR(v.budget)}
+                  >
+                    {v.budget ? compactIDR(v.budget) : "—"}
                   </span>
                 </div>
               </TableCell>
             );
           })}
-          <TableCell className="text-right">
+          <TableCell className="text-right sticky right-0 bg-card z-[1]">
             <div className="flex items-center justify-end gap-1">
               <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onEdit(ind)}>
                 <Pencil className="h-3.5 w-3.5" />
