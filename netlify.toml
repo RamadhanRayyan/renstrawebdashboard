@@ -2,6 +2,10 @@
   command = "npm run build"
   publish = "dist/client"
 
+[functions]
+  directory = "dist/server"
+  included_files = ["dist/server/**"]
+
 [build.environment]
   NITRO_PRESET = "netlify"
 
