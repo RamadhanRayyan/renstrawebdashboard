@@ -31,8 +31,8 @@ export const Route = createFileRoute("/admin")({
 function AdminDashboardPage() {
   const { role, isApproved } = useAuth();
   const { programs, isLoading } = useRenstra();
-  const isGuest = role === "guest" || !role;
   const isAdmin = role === "admin";
+  const isGuest = !isAdmin;
 
   // Jika bukan guest tapi belum di-approve
   if (!isGuest && !isApproved) {

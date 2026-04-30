@@ -4,6 +4,7 @@ import { RenstraTable } from "@/components/RenstraTable";
 import { RenstraInputTable } from "@/components/RenstraInputTable";
 import { ExportPdfButton } from "@/components/ExportPdfButton";
 import { useAuth } from "@/hooks/use-auth";
+import { useRenstra } from "@/hooks/use-renstra";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/renstra")({
@@ -21,39 +22,47 @@ export const Route = createFileRoute("/renstra")({
 });
 
 function RenstraPage() {
-  const { role, isApproved } = useAuth();
-  const isGuest = role === "guest" || !role;
-  const isAdmin = (role === "admin" || role === "user") && isApproved;
+  const { role, isApproved, isLoading: isAuthLoading } = useAuth();
+  const { isLoading: isDataLoading } = useRenstra();
+  const isAdmin = role === "admin" && isApproved;
+  const isGuest = !isAdmin;
+  const isLoading = isAuthLoading || isDataLoading;
 
   return (
     <AppShell
-      title={isAdmin ? "Renstra Master Data" : "Monitoring Data Renstra"}
+      title={isAdmin ? "Renstra Master Data" : "Data Monitoring Renstra"}
       subtitle={isAdmin 
-        ? "Mode Editor: Kelola Program, Sasaran, & Indikator (CRUD)" 
-        : "Mode Tamu: Lihat Capaian & Target Renstra (Read-only)"
+        ? "Mode Editor: Kelola Program, Sasaran, & Indikator 2026 — 2030" 
+        : "Mode Tamu: Lihat Capaian & Target Renstra 2026 — 2030"
       }
       actions={<ExportPdfButton targetId="report-content" />}
     >
-      <div id="report-content" className="bg-background p-4 rounded-xl">
-        {isAdmin ? (
-          <Tabs defaultValue="excel" className="w-full">
-            <TabsList className="mb-6 bg-muted/50 p-1">
-              <TabsTrigger value="excel">Excel Entry (CRUD)</TabsTrigger>
-              <TabsTrigger value="monitoring">Monitoring View</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="excel">
-              <RenstraInputTable />
-            </TabsContent>
-            
-            <TabsContent value="monitoring">
-              <RenstraTable isGuest={false} />
-            </TabsContent>
-          </Tabs>
-        ) : (
-          <RenstraTable isGuest={true} />
-        )}
-      </div>
+      {isLoading ? (
+        <div className="flex h-[60vh] items-center justify-center text-sm text-muted-foreground">
+          Memuat data Renstra…
+        </div>
+      ) : (
+        <div id="report-content" className="bg-background p-4 rounded-xl">
+          {isAdmin ? (
+            <Tabs defaultValue="excel" className="w-full">
+              <TabsList className="mb-6 bg-muted/50 p-1">
+                <TabsTrigger value="excel">Excel Entry (CRUD)</TabsTrigger>
+                <TabsTrigger value="monitoring">Monitoring View</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="excel">
+                <RenstraInputTable />
+              </TabsContent>
+              
+              <TabsContent value="monitoring">
+                <RenstraTable isGuest={false} />
+              </TabsContent>
+            </Tabs>
+          ) : (
+            <RenstraTable isGuest={true} />
+          )}
+        </div>
+      )}
     </AppShell>
   );
 }

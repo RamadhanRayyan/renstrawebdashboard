@@ -52,6 +52,7 @@ async function fetchAll(): Promise<Program[]> {
       baseline: Number(i.baseline) || 0,
       penjelasan: i.penjelasan ?? "",
       pic: i.pic ?? "",
+      link: i.link ?? "",
       values: valuesByInd.get(i.id) ?? emptyValues(),
     });
     indBySasaran.set(i.sasaran_id, arr);
@@ -215,12 +216,28 @@ export function useRenstra() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
-
+  
+  const deleteProgramMut = useMutation({
+    mutationFn: async (programId: string) => {
+      const { error } = await supabase
+        .from("renstra_programs")
+        .delete()
+        .eq("id", programId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Program dihapus");
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  
   return {
     programs,
     isLoading,
     updateValue,
     addProgram: (nama: string) => addProgramMut.mutate(nama),
+    deleteProgram: (programId: string) => deleteProgramMut.mutate(programId),
     addSasaran: (programId: string, nama: string) =>
       addSasaranMut.mutate({ programId, nama }),
     addIndikator: (_programId: string, sasaranId: string, nama: string, satuan: string) =>

@@ -9,10 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -22,271 +19,146 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
   YEARS,
   MONTHS,
   capaian,
-  formatIDR,
   getStatus,
   type Year,
 } from "@/lib/renstra-data";
 import { useRenstra } from "@/hooks/use-renstra";
 import {
   Download,
-  Pencil,
-  Plus,
   RotateCcw,
-  Trash2,
-  ChevronRight,
+  LayoutGrid,
+  ListTodo,
+  TrendingUp
 } from "lucide-react";
-
-const STATUS_CLASS: Record<string, string> = {
-  success: "bg-success/15 text-success border-success/30",
-  warning: "bg-warning/20 text-warning-foreground border-warning/40",
-  danger: "bg-danger/15 text-danger border-danger/30",
-  neutral: "bg-muted text-muted-foreground border-border",
-};
-
-const STATUS_LABEL: Record<string, string> = {
-  success: "Tercapai",
-  warning: "Hampir",
-  danger: "Kurang",
-  neutral: "—",
-};
-
-function compactIDR(n: number): string {
-  if (!n) return "—";
-  if (n >= 1_000_000_000_000) return `${(n / 1_000_000_000_000).toFixed(1)}T`;
-  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(1)}M`;
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}jt`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}rb`;
-  return String(n);
-}
 
 export function RenstraTable({ isGuest = false }: { isGuest?: boolean }) {
   const {
     programs,
-    updateValue,
-    addProgram,
-    addSasaran,
-    addIndikator,
-    deleteIndikator,
     reset,
   } = useRenstra();
 
-  const [yearFilter, setYearFilter] = useState<Year | "all">("all");
-  const [monthFilter, setMonthFilter] = useState<number>(0);
-  const [programFilter, setProgramFilter] = useState<string>("all");
-  const [editTarget, setEditTarget] = useState<null | {
-    programId: string;
-    sasaranId: string;
-    indikatorId: string;
-    nama: string;
-    satuan: string;
-  }>(null);
-
-  const yearsToShow: Year[] = yearFilter === "all" ? [...YEARS] : [yearFilter];
-
-  const visiblePrograms = useMemo(
-    () => (programFilter === "all" ? programs : programs.filter((p) => p.id === programFilter)),
-    [programs, programFilter],
-  );
-
-  const editingIndikator = useMemo(() => {
-    if (!editTarget) return null;
-    const p = programs.find((x) => x.id === editTarget.programId);
-    const s = p?.sasaran.find((x) => x.id === editTarget.sasaranId);
-    return s?.indikator.find((x) => x.id === editTarget.indikatorId) ?? null;
-  }, [editTarget, programs]);
+  const [selectedYear, setSelectedYear] = useState<Year>(YEARS[0]);
+  
+  const monthlyHeaders = MONTHS.filter(m => m.id !== 0);
 
   const exportExcel = () => {
     const rows: Record<string, string | number>[] = [];
-    for (const p of visiblePrograms) {
-      for (const s of p.sasaran) {
-        for (const ind of s.indikator) {
+    programs.forEach((p) => {
+      p.sasaran.forEach((s) => {
+        s.indikator.forEach((ind) => {
           const row: Record<string, string | number> = {
-            Program: p.nama,
-            "Sasaran Strategis": s.nama,
-            "Indikator Kinerja": ind.nama,
-            Satuan: ind.satuan,
+            "No Misi": p.nama,
+            "Sasaran": s.nama,
+            "Indikator": ind.nama,
+            "Bagian": ind.bagian || "",
+            "Kode": ind.kode || "",
+            "IKU/IKT": ind.iku_ikt || "",
+            "Baseline": ind.baseline || 0,
+            "Satuan": ind.satuan,
           };
-          for (const y of yearsToShow) {
-            const v = ind.values[y];
-            row[`Target ${y}`] = v.target;
-            row[`Realisasi ${y}`] = v.actual;
-            row[`Capaian ${y} (%)`] = Number(capaian(v.actual, v.target).toFixed(2));
+          if (!isGuest) {
+            row["Link Dokumen"] = ind.link || "";
           }
+          monthlyHeaders.forEach(m => {
+            row[m.name] = ind.values[selectedYear]?.months[m.id]?.actual || 0;
+          });
           rows.push(row);
-        }
-      }
-    }
+        });
+      });
+    });
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Renstra 2025-2029");
-    XLSX.writeFile(wb, `renstra-monitoring-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, "Data Renstra Bulanan");
+    XLSX.writeFile(wb, `renstra-monitoring-${selectedYear}.xlsx`);
   };
 
   return (
     <div className="space-y-5">
-      {/* Filters & actions */}
-      <Card className="shadow-elegant">
+      {/* Filters */}
+      <Card className="shadow-elegant border bg-background/50 backdrop-blur-md">
         <CardContent className="py-4">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-end gap-3">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex items-center gap-4">
               <div className="space-y-1.5">
-                <Label className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">
-                  Tahun
-                </Label>
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-bold block">
+                  Pilih Tahun Monitoring
+                </span>
                 <Select
-                  value={String(yearFilter)}
-                  onValueChange={(v) => setYearFilter(v === "all" ? "all" : (Number(v) as Year))}
+                  value={String(selectedYear)}
+                  onValueChange={(v) => setSelectedYear(Number(v) as Year)}
                 >
-                  <SelectTrigger className="w-full sm:w-[140px]">
+                  <SelectTrigger className="w-40 h-9 bg-background">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Semua Tahun</SelectItem>
                     {YEARS.map((y) => (
-                      <SelectItem key={y} value={String(y)}>
-                        {y}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">
-                  Bulan
-                </Label>
-                <Select
-                  value={String(monthFilter)}
-                  onValueChange={(v) => setMonthFilter(Number(v))}
-                >
-                  <SelectTrigger className="w-full sm:w-[140px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MONTHS.map((m) => (
-                      <SelectItem key={m.id} value={String(m.id)}>
-                        {m.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5 col-span-2 sm:col-span-1">
-                <Label className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">
-                  Program
-                </Label>
-                <Select value={programFilter} onValueChange={setProgramFilter}>
-                  <SelectTrigger className="w-full sm:w-[320px]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Semua Program</SelectItem>
-                    {programs.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.nama}
-                      </SelectItem>
+                      <SelectItem key={y} value={String(y)}>{y}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              {!isGuest && <AddProgramDialog onAdd={addProgram} />}
+            
+            <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={reset}>
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Refresh
               </Button>
               <Button size="sm" onClick={exportExcel}>
                 <Download className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">Export Excel</span>
-                <span className="sm:hidden">Export</span>
+                Export Excel
               </Button>
             </div>
-          </div>
-
-          {/* Legend */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-4 pt-4 border-t border-border">
-            <span className="text-xs text-muted-foreground">Status capaian:</span>
-            <LegendDot className="bg-success" label="≥ 100% Tercapai" />
-            <LegendDot className="bg-warning" label="75% – 99% Hampir" />
-            <LegendDot className="bg-danger" label="< 75% Kurang" />
           </div>
         </CardContent>
       </Card>
 
-      {/* Hierarchical table */}
-      <Card className="shadow-card overflow-hidden">
+      {/* Main Table */}
+      <Card className="shadow-card overflow-hidden border">
         <div className="overflow-x-auto">
-          <Table className="min-w-[1200px]">
-            <TableHeader>
-              <TableRow className="bg-muted/60 hover:bg-muted/60">
-                <TableHead className="w-[300px] text-foreground font-semibold sticky left-0 bg-muted/60 z-10">
-                  Indikator Kinerja
-                </TableHead>
-                <TableHead className="w-[80px] text-foreground font-semibold">Satuan</TableHead>
-                {yearsToShow.map((y) => (
-                  <TableHead
-                    key={y}
-                    className="text-center border-l border-border min-w-[140px]"
-                  >
-                    <div className="font-semibold text-foreground py-0.5">{y}</div>
-                    <div className="grid grid-cols-3 gap-1 mt-1 text-[10px] uppercase tracking-wider text-muted-foreground font-normal">
-                      <span className="text-center">Target</span>
-                      <span className="text-center">Real</span>
-                      <span className="text-center">Cap (%)</span>
-                    </div>
+          <Table className="min-w-[2800px] text-[11px] border-separate border-spacing-0">
+            <TableHeader className="sticky top-0 bg-secondary/95 backdrop-blur-md z-30 shadow-sm">
+              <TableRow className="divide-x divide-border">
+                <TableHead className="w-12 text-center font-bold text-foreground border-b sticky left-0 bg-secondary z-40">No</TableHead>
+                <TableHead className="w-64 font-bold text-foreground border-b sticky left-12 bg-secondary z-40">Misi (Program)</TableHead>
+                <TableHead className="w-48 font-bold text-foreground border-b">BAGIAN</TableHead>
+                <TableHead className="w-48 font-bold text-foreground border-b">Borang Akreditasi AIPT</TableHead>
+                <TableHead className="w-24 font-bold text-foreground border-b text-center">KODE</TableHead>
+                <TableHead className="w-[400px] font-bold text-foreground border-b">INDIKATOR KINERJA RENSTRA</TableHead>
+                <TableHead className="w-24 font-bold text-foreground border-b text-center">IKU/IKT</TableHead>
+                <TableHead className="w-24 font-bold text-foreground border-b text-center bg-amber-50/50">BASELINE</TableHead>
+                
+                {monthlyHeaders.map((m) => (
+                  <TableHead key={m.id} className="w-24 font-bold text-foreground border-b text-center bg-primary/5 uppercase text-[9px]">
+                    {m.name}
                   </TableHead>
                 ))}
-                {!isGuest && (
-                  <TableHead className="w-[100px] text-right text-foreground font-semibold sticky right-0 bg-muted/60 z-10">
-                    Aksi
-                  </TableHead>
-                )}
+
+                <TableHead className="w-24 font-bold text-foreground border-b text-center">SATUAN</TableHead>
+                <TableHead className="w-64 font-bold text-foreground border-b">PENJELASAN</TableHead>
+                <TableHead className="w-40 font-bold text-foreground border-b">PIC</TableHead>
+                {!isGuest && <TableHead className="w-48 font-bold text-foreground border-b bg-primary/10">LINK DOKUMEN</TableHead>}
               </TableRow>
             </TableHeader>
+
             <TableBody>
-              {visiblePrograms.map((p) => (
-                <ProgramBlock
-                  key={p.id}
-                  program={p}
-                  yearsToShow={yearsToShow}
+              {programs.map((p, pIdx) => (
+                <MonitoringGroup 
+                  key={p.id} 
+                  program={p} 
+                  no={pIdx + 1}
+                  selectedYear={selectedYear}
                   isGuest={isGuest}
-                  onEdit={(s, i) =>
-                    setEditTarget({
-                      programId: p.id,
-                      sasaranId: s.id,
-                      indikatorId: i.id,
-                      nama: i.nama,
-                      satuan: i.satuan,
-                    })
-                  }
-                  onDelete={(s, i) => deleteIndikator(p.id, s.id, i.id)}
-                  onAddSasaran={(nama) => addSasaran(p.id, nama)}
-                  onAddIndikator={(sId, nama, sat) => addIndikator(p.id, sId, nama, sat)}
                 />
               ))}
-              {visiblePrograms.length === 0 && (
+              
+              {programs.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={3 + yearsToShow.length} className="text-center py-12 text-muted-foreground">
-                    Belum ada program. Tambahkan program baru untuk memulai.
+                  <TableCell colSpan={30} className="h-40 text-center text-muted-foreground">
+                    Data tidak ditemukan.
                   </TableCell>
                 </TableRow>
               )}
@@ -294,358 +166,81 @@ export function RenstraTable({ isGuest = false }: { isGuest?: boolean }) {
           </Table>
         </div>
       </Card>
-
-      {/* Side panel for editing yearly values */}
-      <Sheet open={!!editTarget} onOpenChange={(o) => !o && setEditTarget(null)}>
-        <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
-          {editTarget && editingIndikator && (
-            <>
-              <SheetHeader>
-                <SheetTitle>Edit Target & Realisasi</SheetTitle>
-                <SheetDescription>
-                  <span className="font-medium text-foreground">{editTarget.nama}</span>
-                  <span className="text-muted-foreground"> · {editTarget.satuan}</span>
-                </SheetDescription>
-              </SheetHeader>
-
-              <div className="mt-6 space-y-5">
-                {YEARS.map((y) => {
-                  const v = editingIndikator.values[y];
-                  const c = capaian(v.actual, v.target);
-                  const status = getStatus(v.actual, v.target);
-                  return (
-                    <div key={y} className="rounded-lg border border-border bg-card p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="font-semibold text-foreground">Tahun {y}</div>
-                        <Badge className={STATUS_CLASS[status]} variant="outline">
-                          {STATUS_LABEL[status]} · {c.toFixed(1)}%
-                        </Badge>
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <NumberField
-                          label="Target"
-                          value={v.target}
-                          onChange={(n) =>
-                            updateValue(editTarget.indikatorId, y, "target", n)
-                          }
-                        />
-                        <NumberField
-                          label="Realisasi"
-                          value={v.actual}
-                          onChange={(n) =>
-                            updateValue(editTarget.indikatorId, y, "actual", n)
-                          }
-                        />
-                      </div>
-                      <Progress value={Math.min(c, 100)} className="mt-3 h-1.5" />
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }
 
-/* ---------- Sub-components ---------- */
-
-function ProgramBlock({
-  program,
-  yearsToShow,
-  onEdit,
-  onDelete,
-  onAddSasaran,
-  onAddIndikator,
-  isGuest,
-}: {
-  program: import("@/lib/renstra-data").Program;
-  yearsToShow: Year[];
-  onEdit: (s: import("@/lib/renstra-data").Sasaran, i: import("@/lib/renstra-data").Indikator) => void;
-  onDelete: (s: import("@/lib/renstra-data").Sasaran, i: import("@/lib/renstra-data").Indikator) => void;
-  onAddSasaran: (nama: string) => void;
-  onAddIndikator: (sasaranId: string, nama: string, satuan: string) => void;
-  isGuest?: boolean;
-}) {
-  const colSpan = 3 + yearsToShow.length;
-
-  return (
-    <>
-      <TableRow className="bg-primary/5 hover:bg-primary/5 border-t-2 border-primary/20">
-        <TableCell colSpan={colSpan} className="py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="font-mono text-[10px] bg-primary text-primary-foreground border-primary">
-                PROGRAM
-              </Badge>
-              <span className="font-semibold text-foreground">{program.nama}</span>
-            </div>
-            {!isGuest && <AddSasaranDialog onAdd={onAddSasaran} />}
-          </div>
-        </TableCell>
-      </TableRow>
-
-      {program.sasaran.map((s) => (
-        <SasaranBlock
-          key={s.id}
-          sasaran={s}
-          yearsToShow={yearsToShow}
-          colSpan={colSpan}
-          isGuest={isGuest}
-          onEdit={(i) => onEdit(s, i)}
-          onDelete={(i) => onDelete(s, i)}
-          onAddIndikator={(nama, sat) => onAddIndikator(s.id, nama, sat)}
-        />
-      ))}
-
-      {program.sasaran.length === 0 && (
-        <TableRow>
-          <TableCell colSpan={colSpan} className="text-center text-xs text-muted-foreground py-4">
-            Belum ada sasaran strategis pada program ini.
-          </TableCell>
-        </TableRow>
-      )}
-    </>
+function MonitoringGroup({ program, no, selectedYear, isGuest }: { program: any, no: number, selectedYear: Year, isGuest: boolean }) {
+  const indicators = program.sasaran.flatMap(s => 
+    s.indikator.map(i => ({ ...i, sasaranNama: s.nama }))
   );
-}
 
-function SasaranBlock({
-  sasaran,
-  yearsToShow,
-  colSpan,
-  onEdit,
-  onDelete,
-  onAddIndikator,
-  isGuest,
-}: {
-  sasaran: import("@/lib/renstra-data").Sasaran;
-  yearsToShow: Year[];
-  colSpan: number;
-  onEdit: (i: import("@/lib/renstra-data").Indikator) => void;
-  onDelete: (i: import("@/lib/renstra-data").Indikator) => void;
-  onAddIndikator: (nama: string, satuan: string) => void;
-  isGuest?: boolean;
-}) {
   return (
     <>
-      <TableRow className="bg-muted/30 hover:bg-muted/30">
-        <TableCell colSpan={colSpan} className="py-2.5">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 pl-4">
-              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-              <Badge variant="outline" className="font-mono text-[10px]">
-                SASARAN
-              </Badge>
-              <span className="text-sm text-foreground">{sasaran.nama}</span>
-            </div>
-            {!isGuest && <AddIndikatorDialog onAdd={onAddIndikator} />}
+      <TableRow className="bg-primary/5">
+        <TableCell className="text-center font-bold border-b sticky left-0 bg-primary/5 z-20">{no}</TableCell>
+        <TableCell colSpan={25} className="font-bold text-primary border-b sticky left-12 bg-primary/5 z-20 py-3">
+          <div className="flex items-center gap-2">
+            <LayoutGrid className="w-4 h-4" />
+            MISI: {program.nama}
           </div>
         </TableCell>
       </TableRow>
 
-      {sasaran.indikator.map((ind) => (
-        <TableRow key={ind.id} className="hover:bg-muted/20">
-          <TableCell className="pl-12 sticky left-0 bg-card z-[1]">
-            <div className="text-sm font-medium text-foreground">{ind.nama}</div>
+      {indicators.map((ind, iIdx) => (
+        <TableRow key={ind.id} className="hover:bg-muted/30 transition-colors divide-x divide-border">
+          <TableCell className="text-center text-muted-foreground border-b sticky left-0 bg-background z-10">
+            {no}.{iIdx + 1}
           </TableCell>
-          <TableCell className="text-xs text-muted-foreground">{ind.satuan}</TableCell>
-          {yearsToShow.map((y) => {
-            const v = ind.values[y];
-            const c = capaian(v.actual, v.target);
-            const status = getStatus(v.actual, v.target);
+          <TableCell className="border-b sticky left-12 bg-muted/5 z-10 max-w-[256px]">
+            <div className="flex items-center gap-2">
+              <ListTodo className="w-3 h-3 text-muted-foreground shrink-0" />
+              <span className="truncate text-muted-foreground text-[10px]">{ind.sasaranNama}</span>
+            </div>
+          </TableCell>
+          
+          <TableCell className="border-b px-2">{ind.bagian || "—"}</TableCell>
+          <TableCell className="border-b px-2">{ind.borang_aipt || "—"}</TableCell>
+          <TableCell className="border-b text-center font-mono">{ind.kode || "—"}</TableCell>
+          <TableCell className="border-b px-3 font-medium text-foreground">{ind.nama}</TableCell>
+          <TableCell className="border-b text-center">
+            {ind.iku_ikt ? (
+              <Badge variant="outline" className="text-[9px] font-bold py-0 h-4 bg-primary/10 text-primary border-primary/20">
+                {ind.iku_ikt}
+              </Badge>
+            ) : "—"}
+          </TableCell>
+          <TableCell className="border-b text-center bg-amber-50/20 font-mono">{ind.baseline || 0}</TableCell>
+
+          {/* 12 Months Data */}
+          {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => {
+            const val = ind.values[selectedYear]?.months[m]?.actual || 0;
             return (
-              <TableCell key={y} className="border-l border-border p-2 align-middle">
-                <div className="grid grid-cols-3 gap-1.5 text-xs items-center">
-                  <span className="font-mono text-foreground text-center tabular-nums">
-                    {v.target || "—"}
-                  </span>
-                  <span className="font-mono text-foreground text-center tabular-nums">
-                    {monthFilter === 0 ? v.actual : (v.months[monthFilter]?.actual || 0) || "—"}
-                  </span>
-                  <span
-                    className={`font-mono px-1 py-0.5 rounded text-[10px] border text-center leading-tight ${STATUS_CLASS[status]}`}
-                  >
-                    {v.target ? `${c.toFixed(0)}%` : "—"}
-                  </span>
-                </div>
+              <TableCell key={m} className="border-b text-center bg-primary/5 font-mono">
+                {val || "—"}
               </TableCell>
             );
           })}
+
+          <TableCell className="border-b text-center font-medium">{ind.satuan}</TableCell>
+          <TableCell className="border-b px-2 text-muted-foreground line-clamp-1 max-w-[200px]" title={ind.penjelasan}>
+            {ind.penjelasan || "—"}
+          </TableCell>
+          <TableCell className="border-b px-2 italic text-muted-foreground">{ind.pic || "—"}</TableCell>
           {!isGuest && (
-            <TableCell className="text-right sticky right-0 bg-card z-[1]">
-              <div className="flex items-center justify-end gap-1">
-                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onEdit(ind)}>
-                  <Pencil className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8 text-danger hover:text-danger"
-                  onClick={() => onDelete(ind)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              </div>
+            <TableCell className="border-b px-2 font-medium text-primary bg-primary/5 truncate max-w-[150px]">
+              {ind.link ? (
+                <a href={ind.link} target="_blank" rel="noopener noreferrer" className="hover:underline flex items-center gap-1">
+                  <TrendingUp className="w-3 h-3" />
+                  Buka Link
+                </a>
+              ) : (
+                "—"
+              )}
             </TableCell>
           )}
         </TableRow>
       ))}
     </>
-  );
-}
-
-function NumberField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: number;
-  onChange: (n: number) => void;
-}) {
-  return (
-    <div className="space-y-1">
-      <Label className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</Label>
-      <Input
-        type="number"
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value) || 0)}
-        className="h-9 font-mono text-sm"
-      />
-    </div>
-  );
-}
-
-function LegendDot({ className, label }: { className: string; label: string }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-      <span className={`h-2.5 w-2.5 rounded-full ${className}`} />
-      {label}
-    </span>
-  );
-}
-
-function AddProgramDialog({ onAdd }: { onAdd: (nama: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const [nama, setNama] = useState("");
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline">
-          <Plus className="h-4 w-4 mr-2" />
-          Program
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Tambah Program</DialogTitle>
-          <DialogDescription>Program baru pada Renstra 2026-2030.</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-2">
-          <Label>Nama Program</Label>
-          <Input value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Contoh: Program Peningkatan ..." />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Batal
-          </Button>
-          <Button
-            onClick={() => {
-              if (!nama.trim()) return;
-              onAdd(nama.trim());
-              setNama("");
-              setOpen(false);
-            }}
-          >
-            Tambah
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function AddSasaranDialog({ onAdd }: { onAdd: (nama: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const [nama, setNama] = useState("");
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="ghost" className="h-7 text-xs">
-          <Plus className="h-3.5 w-3.5 mr-1" /> Sasaran
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Tambah Sasaran Strategis</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-2">
-          <Label>Nama Sasaran</Label>
-          <Input value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Meningkatnya ..." />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Batal
-          </Button>
-          <Button
-            onClick={() => {
-              if (!nama.trim()) return;
-              onAdd(nama.trim());
-              setNama("");
-              setOpen(false);
-            }}
-          >
-            Tambah
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function AddIndikatorDialog({ onAdd }: { onAdd: (nama: string, satuan: string) => void }) {
-  const [open, setOpen] = useState(false);
-  const [nama, setNama] = useState("");
-  const [satuan, setSatuan] = useState("%");
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="ghost" className="h-7 text-xs">
-          <Plus className="h-3.5 w-3.5 mr-1" /> Indikator
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Tambah Indikator Kinerja</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label>Nama Indikator</Label>
-            <Input value={nama} onChange={(e) => setNama(e.target.value)} placeholder="Persentase ..." />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Satuan</Label>
-            <Input value={satuan} onChange={(e) => setSatuan(e.target.value)} placeholder="% / Skor / Orang / Indeks" />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Batal
-          </Button>
-          <Button
-            onClick={() => {
-              if (!nama.trim() || !satuan.trim()) return;
-              onAdd(nama.trim(), satuan.trim());
-              setNama("");
-              setOpen(false);
-            }}
-          >
-            Tambah
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   );
 }

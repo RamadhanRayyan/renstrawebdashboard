@@ -37,6 +37,7 @@ export interface Indikator {
   baseline?: number;
   penjelasan?: string;
   pic?: string;
+  link?: string;
   values: YearlyValue;
 }
 

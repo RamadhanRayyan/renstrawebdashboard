@@ -11,7 +11,7 @@ export function AppSidebar({ onNavigate }: Props) {
   const { role, signOut, user } = useAuth();
   const navigate = useNavigate();
 
-  const isAdmin = role === "admin" || role === "user";
+  const isAdmin = role === "admin";
 
   const NAV = [
     { to: "/", label: "Executive Overview", icon: LayoutDashboard },
@@ -24,13 +24,25 @@ export function AppSidebar({ onNavigate }: Props) {
 
   const handleSignOut = async () => {
     try {
-      await signOut();
-      // Force reload to login page to clear all states
-      window.location.href = "/#/login";
-      window.location.reload();
+      import("sonner").then(({ toast }) => toast.success("Sedang keluar..."));
+      
+      // Bersihkan semua state lokal dan sesi
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Panggil signOut (background)
+      signOut().catch(console.error);
+      
+      // Paksa pindah halaman secara instan
+      window.location.replace("/#/login");
+      
+      // Fallback reload jika replace gagal
+      setTimeout(() => {
+        window.location.href = "/#/login";
+        window.location.reload();
+      }, 300);
     } catch (error) {
-      console.error("Logout error:", error);
-      window.location.href = "/#/login";
+      window.location.replace("/#/login");
     }
   };
 
