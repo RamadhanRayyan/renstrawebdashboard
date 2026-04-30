@@ -1,12 +1,42 @@
-export const YEARS = [2025, 2026, 2027, 2028, 2029] as const;
+export const YEARS = [2026, 2027, 2028, 2029, 2030] as const;
 export type Year = (typeof YEARS)[number];
 
-export type YearlyValue = Record<Year, { target: number; actual: number; budget: number }>;
+export const MONTHS = [
+  { id: 0, name: "Tahunan" },
+  { id: 1, name: "Januari" },
+  { id: 2, name: "Februari" },
+  { id: 3, name: "Maret" },
+  { id: 4, name: "April" },
+  { id: 5, name: "Mei" },
+  { id: 6, name: "Juni" },
+  { id: 7, name: "Juli" },
+  { id: 8, name: "Agustus" },
+  { id: 9, name: "September" },
+  { id: 10, name: "Oktober" },
+  { id: 11, name: "November" },
+  { id: 12, name: "Desember" },
+] as const;
+
+export type MonthlyValue = {
+  target: number;
+  actual: number;
+  budget: number;
+  months: Record<number, { actual: number }>; // Month 1-12
+};
+
+export type YearlyValue = Record<Year, MonthlyValue>;
 
 export interface Indikator {
   id: string;
   nama: string;
   satuan: string;
+  bagian?: string;
+  borang_aipt?: string;
+  kode?: string;
+  iku_ikt?: string;
+  baseline?: number;
+  penjelasan?: string;
+  pic?: string;
   values: YearlyValue;
 }
 
@@ -22,25 +52,25 @@ export interface Program {
   sasaran: Sasaran[];
 }
 
-const emptyValues = (): YearlyValue => ({
-  2025: { target: 0, actual: 0, budget: 0 },
-  2026: { target: 0, actual: 0, budget: 0 },
-  2027: { target: 0, actual: 0, budget: 0 },
-  2028: { target: 0, actual: 0, budget: 0 },
-  2029: { target: 0, actual: 0, budget: 0 },
-});
+const emptyValues = (): YearlyValue => {
+  const years: any = {};
+  YEARS.forEach((y) => {
+    years[y] = { target: 0, actual: 0, budget: 0, months: {} };
+  });
+  return years as YearlyValue;
+};
 
 const v = (
   t: [number, number, number, number, number],
   a: [number, number, number, number, number],
   b: [number, number, number, number, number],
-): YearlyValue => ({
-  2025: { target: t[0], actual: a[0], budget: b[0] },
-  2026: { target: t[1], actual: a[1], budget: b[1] },
-  2027: { target: t[2], actual: a[2], budget: b[2] },
-  2028: { target: t[3], actual: a[3], budget: b[3] },
-  2029: { target: t[4], actual: a[4], budget: b[4] },
-});
+): YearlyValue => {
+  const years: any = {};
+  YEARS.forEach((y, i) => {
+    years[y] = { target: t[i], actual: a[i], budget: b[i], months: {} };
+  });
+  return years as YearlyValue;
+};
 
 export const INITIAL_PROGRAMS: Program[] = [
   {
@@ -74,48 +104,6 @@ export const INITIAL_PROGRAMS: Program[] = [
             nama: "Indeks Kepuasan Masyarakat",
             satuan: "Indeks",
             values: v([85, 87, 89, 91, 93], [86, 88, 0, 0, 0], [320_000_000, 340_000_000, 360_000_000, 380_000_000, 400_000_000]),
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "P2",
-    nama: "Program Pengembangan Sumber Daya Manusia",
-    sasaran: [
-      {
-        id: "S3",
-        nama: "Meningkatnya kompetensi aparatur sipil negara",
-        indikator: [
-          {
-            id: "I4",
-            nama: "Persentase ASN bersertifikasi kompetensi",
-            satuan: "%",
-            values: v([60, 70, 80, 90, 100], [55, 65, 0, 0, 0], [500_000_000, 550_000_000, 600_000_000, 650_000_000, 700_000_000]),
-          },
-          {
-            id: "I5",
-            nama: "Jumlah ASN mengikuti diklat",
-            satuan: "Orang",
-            values: v([200, 250, 300, 350, 400], [180, 220, 0, 0, 0], [400_000_000, 450_000_000, 500_000_000, 550_000_000, 600_000_000]),
-          },
-        ],
-      },
-    ],
-  },
-  {
-    id: "P3",
-    nama: "Program Pembangunan Infrastruktur Daerah",
-    sasaran: [
-      {
-        id: "S4",
-        nama: "Meningkatnya kualitas infrastruktur jalan",
-        indikator: [
-          {
-            id: "I6",
-            nama: "Persentase jalan kondisi mantap",
-            satuan: "%",
-            values: v([75, 80, 85, 90, 95], [60, 72, 0, 0, 0], [1_500_000_000, 1_700_000_000, 1_900_000_000, 2_100_000_000, 2_300_000_000]),
           },
         ],
       },

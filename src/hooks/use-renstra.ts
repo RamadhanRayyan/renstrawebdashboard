@@ -27,11 +27,14 @@ async function fetchAll(): Promise<Program[]> {
       valuesByInd.set(v.indikator_id, map);
     }
     if (YEARS.includes(v.tahun as Year)) {
-      map[v.tahun as Year] = {
-        target: Number(v.target) || 0,
-        actual: Number(v.actual) || 0,
-        budget: Number(v.budget) || 0,
-      };
+      const yearData = map[v.tahun as Year];
+      if (v.bulan === 0) {
+        yearData.target = Number(v.target) || 0;
+        yearData.actual = Number(v.actual) || 0;
+        yearData.budget = Number(v.budget) || 0;
+      } else {
+        yearData.months[v.bulan] = { actual: Number(v.actual) || 0 };
+      }
     }
   }
 
@@ -42,6 +45,13 @@ async function fetchAll(): Promise<Program[]> {
       id: i.id,
       nama: i.nama,
       satuan: i.satuan ?? "",
+      bagian: i.bagian ?? "",
+      borang_aipt: i.borang_aipt ?? "",
+      kode: i.kode ?? "",
+      iku_ikt: i.iku_ikt ?? "",
+      baseline: Number(i.baseline) || 0,
+      penjelasan: i.penjelasan ?? "",
+      pic: i.pic ?? "",
       values: valuesByInd.get(i.id) ?? emptyValues(),
     });
     indBySasaran.set(i.sasaran_id, arr);
@@ -77,12 +87,11 @@ export function useRenstra() {
 
   const updateValue = useCallback(
     async (
-      _programId: string,
-      _sasaranId: string,
       indikatorId: string,
       year: Year,
       field: "target" | "actual" | "budget",
       value: number,
+      month: number = 0,
     ) => {
       // Optimistic update
       qc.setQueryData<Program[]>(QK, (prev) =>
@@ -97,7 +106,16 @@ export function useRenstra() {
                     ...i,
                     values: {
                       ...i.values,
-                      [year]: { ...i.values[year], [field]: value },
+                      [year]:
+                        month === 0
+                          ? { ...i.values[year], [field]: value }
+                          : {
+                              ...i.values[year],
+                              months: {
+                                ...i.values[year].months,
+                                [month]: { actual: value },
+                              },
+                            },
                     },
                   },
             ),
@@ -105,16 +123,15 @@ export function useRenstra() {
         })),
       );
 
-      const { error } = await supabase
-        .from("renstra_yearly_values")
-        .upsert(
-          {
-            indikator_id: indikatorId,
-            tahun: year,
-            [field]: value,
-          } as never,
-          { onConflict: "indikator_id,tahun" },
-        );
+      const { error } = await supabase.from("renstra_yearly_values").upsert(
+        {
+          indikator_id: indikatorId,
+          tahun: year,
+          bulan: month,
+          [field]: value,
+        } as never,
+        { onConflict: "indikator_id,tahun,bulan" },
+      );
 
       if (error) {
         toast.error("Gagal menyimpan: " + error.message);
@@ -210,6 +227,24 @@ export function useRenstra() {
       addIndikatorMut.mutate({ sasaranId, nama, satuan }),
     deleteIndikator: (_programId: string, _sasaranId: string, indikatorId: string) =>
       deleteIndikatorMut.mutate(indikatorId),
+    updateIndikator: async (id: string, updates: Partial<Program["sasaran"][number]["indikator"][number]>) => {
+      // Optimistic update
+      qc.setQueryData<Program[]>(QK, (prev) =>
+        (prev ?? []).map((p) => ({
+          ...p,
+          sasaran: p.sasaran.map((s) => ({
+            ...s,
+            indikator: s.indikator.map((i) => (i.id !== id ? i : { ...i, ...updates })),
+          })),
+        })),
+      );
+
+      const { error } = await supabase.from("renstra_indikator").update(updates as never).eq("id", id);
+      if (error) {
+        toast.error("Gagal update indikator: " + error.message);
+        invalidate();
+      }
+    },
     reset: () => invalidate(),
   };
 }

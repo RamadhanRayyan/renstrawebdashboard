@@ -17,7 +17,7 @@ export function AppShell({ title, subtitle, actions, children }: AppShellProps) 
   return (
     <div className="min-h-screen flex w-full bg-background">
       {/* Desktop sidebar */}
-      <div className="hidden lg:flex">
+      <div className="hidden lg:flex sticky top-0 h-screen shrink-0">
         <AppSidebar />
       </div>
 
@@ -42,7 +42,7 @@ export function AppShell({ title, subtitle, actions, children }: AppShellProps) 
               <Menu className="h-5 w-5" />
             </Button>
             <div className="min-w-0 flex-1">
-              <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold tracking-tight text-foreground truncate">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-display uppercase tracking-tight text-foreground truncate">
                 {title}
               </h1>
               {subtitle && (

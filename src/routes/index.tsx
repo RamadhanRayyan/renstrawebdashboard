@@ -1,16 +1,21 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { ExecutiveOverview } from "@/components/ExecutiveOverview";
+import { RenstraTable } from "@/components/RenstraTable";
 import { useRenstra } from "@/hooks/use-renstra";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ExportPdfButton } from "@/components/ExportPdfButton";
+import { ChatSystem } from "@/components/ChatSystem";
+import { useAuth } from "@/hooks/use-auth";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Executive Overview — Renstra Monitoring 2025-2029" },
+      { title: "Executive Overview — Renstra Monitoring 2026-2030" },
       {
         name: "description",
         content:
-          "Dashboard eksekutif monitoring Renstra 2025-2029: capaian indikator, utilisasi anggaran, dan tren tahunan.",
+          "Dashboard eksekutif monitoring Renstra 2026-2030: capaian indikator dan tren tahunan.",
       },
     ],
   }),
@@ -18,18 +23,31 @@ export const Route = createFileRoute("/")({
 });
 
 function IndexPage() {
-  const { programs, isLoading } = useRenstra();
+  const { role, isLoading: isAuthLoading } = useAuth();
+  const { programs, isLoading: isDataLoading } = useRenstra();
+  
+  const isLoading = isAuthLoading || isDataLoading;
+  const isGuest = role === "guest" || !role;
+
   return (
     <AppShell
-      title="Executive Overview"
-      subtitle="Ringkasan capaian Rencana Strategis periode 2025 — 2029"
+      title="Renstra Overview"
+      subtitle={isGuest 
+        ? "Ringkasan capaian Rencana Strategis periode 2026 — 2030 (Read-only)" 
+        : "Dashboard Monitoring Rencana Strategis 2026 — 2030"
+      }
+      actions={<ExportPdfButton targetId="report-content" />}
     >
       {isLoading ? (
         <div className="flex h-[60vh] items-center justify-center text-sm text-muted-foreground">
           Memuat data Renstra…
         </div>
       ) : (
-        <ExecutiveOverview programs={programs} />
+        <div className="w-full max-w-6xl mx-auto">
+          <div id="report-content" className="bg-background p-4 rounded-xl shadow-elegant border">
+             <ExecutiveOverview programs={programs} isGuest={isGuest} />
+          </div>
+        </div>
       )}
     </AppShell>
   );

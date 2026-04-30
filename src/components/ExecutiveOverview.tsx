@@ -31,9 +31,10 @@ import {
 
 interface Props {
   programs: Program[];
+  isGuest?: boolean;
 }
 
-export function ExecutiveOverview({ programs }: Props) {
+export function ExecutiveOverview({ programs, isGuest = false }: Props) {
   const [programFilter, setProgramFilter] = useState<string>("all");
 
   const filtered = useMemo(
@@ -47,17 +48,13 @@ export function ExecutiveOverview({ programs }: Props) {
     const totalSasaran = filtered.reduce((acc, p) => acc + p.sasaran.length, 0);
     const totalIndikator = allIndikator.length;
 
-    let totalBudget = 0;
-    let totalRealizedBudget = 0;
     let progressSum = 0;
     let progressCount = 0;
 
     for (const ind of allIndikator) {
       for (const y of YEARS) {
         const v = ind.values[y];
-        totalBudget += v.budget;
         if (v.actual > 0) {
-          totalRealizedBudget += v.budget;
           progressSum += Math.min(capaian(v.actual, v.target), 150);
           progressCount += 1;
         }
@@ -65,15 +62,12 @@ export function ExecutiveOverview({ programs }: Props) {
     }
 
     const overallProgress = progressCount === 0 ? 0 : progressSum / progressCount;
-    const budgetUtilization = totalBudget === 0 ? 0 : (totalRealizedBudget / totalBudget) * 100;
 
     return {
       totalProgram,
       totalSasaran,
       totalIndikator,
       overallProgress,
-      totalBudget,
-      budgetUtilization,
     };
   }, [filtered]);
 
@@ -82,10 +76,8 @@ export function ExecutiveOverview({ programs }: Props) {
       const allIndikator = filtered.flatMap((p) => p.sasaran.flatMap((s) => s.indikator));
       let sum = 0;
       let count = 0;
-      let budget = 0;
       for (const ind of allIndikator) {
         const v = ind.values[y];
-        budget += v.budget;
         if (v.target > 0 && v.actual > 0) {
           sum += Math.min(capaian(v.actual, v.target), 150);
           count++;
@@ -94,7 +86,6 @@ export function ExecutiveOverview({ programs }: Props) {
       return {
         year: String(y),
         capaian: count === 0 ? null : Math.round((sum / count) * 10) / 10,
-        budget: Math.round(budget / 1_000_000),
       };
     });
   }, [filtered]);
@@ -145,12 +136,12 @@ export function ExecutiveOverview({ programs }: Props) {
           </Select>
         </div>
         <Badge variant="secondary" className="font-mono text-xs self-start sm:self-auto">
-          Periode 2025 — 2029
+          Periode 2026 — 2030
         </Badge>
       </div>
 
       {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
         <KpiCard
           icon={<Activity className="h-4 w-4" />}
           label="Total Program"
@@ -158,24 +149,17 @@ export function ExecutiveOverview({ programs }: Props) {
           sub={`${stats.totalSasaran} Sasaran · ${stats.totalIndikator} Indikator`}
         />
         <KpiCard
+          icon={<TargetIcon className="h-4 w-4" />}
+          label="Total Sasaran & Indikator"
+          value={String(stats.totalSasaran)}
+          sub={`${stats.totalIndikator} Indikator Kinerja Terpantau`}
+        />
+        <KpiCard
           icon={<TrendingUp className="h-4 w-4" />}
           label="Overall Progress"
           value={`${stats.overallProgress.toFixed(1)}%`}
           sub="Rata-rata capaian seluruh indikator"
           progress={Math.min(stats.overallProgress, 100)}
-        />
-        <KpiCard
-          icon={<Wallet className="h-4 w-4" />}
-          label="Budget Utilization"
-          value={`${stats.budgetUtilization.toFixed(1)}%`}
-          sub={`Total pagu ${formatIDR(stats.totalBudget)}`}
-          progress={Math.min(stats.budgetUtilization, 100)}
-        />
-        <KpiCard
-          icon={<TargetIcon className="h-4 w-4" />}
-          label="Total Pagu Anggaran"
-          value={formatIDR(stats.totalBudget)}
-          sub="Akumulasi 5 tahun"
         />
       </div>
 

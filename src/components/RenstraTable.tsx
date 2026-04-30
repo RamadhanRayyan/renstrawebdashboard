@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   YEARS,
+  MONTHS,
   capaian,
   formatIDR,
   getStatus,
@@ -77,7 +78,7 @@ function compactIDR(n: number): string {
   return String(n);
 }
 
-export function RenstraTable() {
+export function RenstraTable({ isGuest = false }: { isGuest?: boolean }) {
   const {
     programs,
     updateValue,
@@ -89,6 +90,7 @@ export function RenstraTable() {
   } = useRenstra();
 
   const [yearFilter, setYearFilter] = useState<Year | "all">("all");
+  const [monthFilter, setMonthFilter] = useState<number>(0);
   const [programFilter, setProgramFilter] = useState<string>("all");
   const [editTarget, setEditTarget] = useState<null | {
     programId: string;
@@ -128,7 +130,6 @@ export function RenstraTable() {
             row[`Target ${y}`] = v.target;
             row[`Realisasi ${y}`] = v.actual;
             row[`Capaian ${y} (%)`] = Number(capaian(v.actual, v.target).toFixed(2));
-            row[`Pagu ${y}`] = v.budget;
           }
           rows.push(row);
         }
@@ -168,6 +169,26 @@ export function RenstraTable() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">
+                  Bulan
+                </Label>
+                <Select
+                  value={String(monthFilter)}
+                  onValueChange={(v) => setMonthFilter(Number(v))}
+                >
+                  <SelectTrigger className="w-full sm:w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MONTHS.map((m) => (
+                      <SelectItem key={m.id} value={String(m.id)}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-1.5 col-span-2 sm:col-span-1">
                 <Label className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground">
                   Program
@@ -188,7 +209,7 @@ export function RenstraTable() {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <AddProgramDialog onAdd={addProgram} />
+              {!isGuest && <AddProgramDialog onAdd={addProgram} />}
               <Button variant="outline" size="sm" onClick={reset}>
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Refresh
@@ -224,20 +245,21 @@ export function RenstraTable() {
                 {yearsToShow.map((y) => (
                   <TableHead
                     key={y}
-                    className="text-center border-l border-border min-w-[180px]"
+                    className="text-center border-l border-border min-w-[140px]"
                   >
                     <div className="font-semibold text-foreground py-0.5">{y}</div>
-                    <div className="grid grid-cols-4 gap-1 mt-1 text-[10px] uppercase tracking-wider text-muted-foreground font-normal">
-                      <span className="text-center">Tgt</span>
+                    <div className="grid grid-cols-3 gap-1 mt-1 text-[10px] uppercase tracking-wider text-muted-foreground font-normal">
+                      <span className="text-center">Target</span>
                       <span className="text-center">Real</span>
-                      <span className="text-center">Cap</span>
-                      <span className="text-center">Pagu</span>
+                      <span className="text-center">Cap (%)</span>
                     </div>
                   </TableHead>
                 ))}
-                <TableHead className="w-[100px] text-right text-foreground font-semibold sticky right-0 bg-muted/60 z-10">
-                  Aksi
-                </TableHead>
+                {!isGuest && (
+                  <TableHead className="w-[100px] text-right text-foreground font-semibold sticky right-0 bg-muted/60 z-10">
+                    Aksi
+                  </TableHead>
+                )}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -246,6 +268,7 @@ export function RenstraTable() {
                   key={p.id}
                   program={p}
                   yearsToShow={yearsToShow}
+                  isGuest={isGuest}
                   onEdit={(s, i) =>
                     setEditTarget({
                       programId: p.id,
@@ -298,26 +321,19 @@ export function RenstraTable() {
                           {STATUS_LABEL[status]} · {c.toFixed(1)}%
                         </Badge>
                       </div>
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-2 gap-3">
                         <NumberField
                           label="Target"
                           value={v.target}
                           onChange={(n) =>
-                            updateValue(editTarget.programId, editTarget.sasaranId, editTarget.indikatorId, y, "target", n)
+                            updateValue(editTarget.indikatorId, y, "target", n)
                           }
                         />
                         <NumberField
                           label="Realisasi"
                           value={v.actual}
                           onChange={(n) =>
-                            updateValue(editTarget.programId, editTarget.sasaranId, editTarget.indikatorId, y, "actual", n)
-                          }
-                        />
-                        <NumberField
-                          label="Pagu (Rp)"
-                          value={v.budget}
-                          onChange={(n) =>
-                            updateValue(editTarget.programId, editTarget.sasaranId, editTarget.indikatorId, y, "budget", n)
+                            updateValue(editTarget.indikatorId, y, "actual", n)
                           }
                         />
                       </div>
@@ -343,6 +359,7 @@ function ProgramBlock({
   onDelete,
   onAddSasaran,
   onAddIndikator,
+  isGuest,
 }: {
   program: import("@/lib/renstra-data").Program;
   yearsToShow: Year[];
@@ -350,6 +367,7 @@ function ProgramBlock({
   onDelete: (s: import("@/lib/renstra-data").Sasaran, i: import("@/lib/renstra-data").Indikator) => void;
   onAddSasaran: (nama: string) => void;
   onAddIndikator: (sasaranId: string, nama: string, satuan: string) => void;
+  isGuest?: boolean;
 }) {
   const colSpan = 3 + yearsToShow.length;
 
@@ -364,7 +382,7 @@ function ProgramBlock({
               </Badge>
               <span className="font-semibold text-foreground">{program.nama}</span>
             </div>
-            <AddSasaranDialog onAdd={onAddSasaran} />
+            {!isGuest && <AddSasaranDialog onAdd={onAddSasaran} />}
           </div>
         </TableCell>
       </TableRow>
@@ -375,6 +393,7 @@ function ProgramBlock({
           sasaran={s}
           yearsToShow={yearsToShow}
           colSpan={colSpan}
+          isGuest={isGuest}
           onEdit={(i) => onEdit(s, i)}
           onDelete={(i) => onDelete(s, i)}
           onAddIndikator={(nama, sat) => onAddIndikator(s.id, nama, sat)}
@@ -399,6 +418,7 @@ function SasaranBlock({
   onEdit,
   onDelete,
   onAddIndikator,
+  isGuest,
 }: {
   sasaran: import("@/lib/renstra-data").Sasaran;
   yearsToShow: Year[];
@@ -406,6 +426,7 @@ function SasaranBlock({
   onEdit: (i: import("@/lib/renstra-data").Indikator) => void;
   onDelete: (i: import("@/lib/renstra-data").Indikator) => void;
   onAddIndikator: (nama: string, satuan: string) => void;
+  isGuest?: boolean;
 }) {
   return (
     <>
@@ -419,7 +440,7 @@ function SasaranBlock({
               </Badge>
               <span className="text-sm text-foreground">{sasaran.nama}</span>
             </div>
-            <AddIndikatorDialog onAdd={onAddIndikator} />
+            {!isGuest && <AddIndikatorDialog onAdd={onAddIndikator} />}
           </div>
         </TableCell>
       </TableRow>
@@ -436,43 +457,39 @@ function SasaranBlock({
             const status = getStatus(v.actual, v.target);
             return (
               <TableCell key={y} className="border-l border-border p-2 align-middle">
-                <div className="grid grid-cols-4 gap-1.5 text-xs items-center">
+                <div className="grid grid-cols-3 gap-1.5 text-xs items-center">
                   <span className="font-mono text-foreground text-center tabular-nums">
                     {v.target || "—"}
                   </span>
                   <span className="font-mono text-foreground text-center tabular-nums">
-                    {v.actual || "—"}
+                    {monthFilter === 0 ? v.actual : (v.months[monthFilter]?.actual || 0) || "—"}
                   </span>
                   <span
                     className={`font-mono px-1 py-0.5 rounded text-[10px] border text-center leading-tight ${STATUS_CLASS[status]}`}
                   >
                     {v.target ? `${c.toFixed(0)}%` : "—"}
                   </span>
-                  <span
-                    className="font-mono text-[10px] text-muted-foreground text-center truncate"
-                    title={formatIDR(v.budget)}
-                  >
-                    {v.budget ? compactIDR(v.budget) : "—"}
-                  </span>
                 </div>
               </TableCell>
             );
           })}
-          <TableCell className="text-right sticky right-0 bg-card z-[1]">
-            <div className="flex items-center justify-end gap-1">
-              <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onEdit(ind)}>
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 text-danger hover:text-danger"
-                onClick={() => onDelete(ind)}
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            </div>
-          </TableCell>
+          {!isGuest && (
+            <TableCell className="text-right sticky right-0 bg-card z-[1]">
+              <div className="flex items-center justify-end gap-1">
+                <Button size="icon" variant="ghost" className="h-8 w-8" onClick={() => onEdit(ind)}>
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8 text-danger hover:text-danger"
+                  onClick={() => onDelete(ind)}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </TableCell>
+          )}
         </TableRow>
       ))}
     </>
@@ -524,7 +541,7 @@ function AddProgramDialog({ onAdd }: { onAdd: (nama: string) => void }) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Tambah Program</DialogTitle>
-          <DialogDescription>Program baru pada Renstra 2025-2029.</DialogDescription>
+          <DialogDescription>Program baru pada Renstra 2026-2030.</DialogDescription>
         </DialogHeader>
         <div className="space-y-2">
           <Label>Nama Program</Label>
