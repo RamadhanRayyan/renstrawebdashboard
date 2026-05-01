@@ -28,7 +28,7 @@ async function fetchAll(): Promise<Program[]> {
     }
     if (YEARS.includes(v.tahun as Year)) {
       const yearData = map[v.tahun as Year];
-      if (v.bulan === 0) {
+      if (v.bulan === 0 || v.bulan === null) {
         yearData.target = Number(v.target) || 0;
         yearData.actual = Number(v.actual) || 0;
         yearData.budget = Number(v.budget) || 0;
@@ -232,20 +232,74 @@ export function useRenstra() {
     onError: (e: Error) => toast.error(e.message),
   });
   
+  const addSasaranRowMut = useMutation({
+    mutationFn: async (programId: string) => {
+      // 1. Create empty sasaran
+      const { data: sasaran, error: sErr } = await supabase
+        .from("renstra_sasaran")
+        .insert({ program_id: programId, nama: "" })
+        .select()
+        .single();
+      if (sErr) throw sErr;
+
+      // 2. Create empty indikator
+      const { data: ind, error: iErr } = await supabase
+        .from("renstra_indikator")
+        .insert({ 
+          sasaran_id: sasaran.id, 
+          nama: "", 
+          satuan: "",
+          bagian: "",
+          borang_aipt: "",
+          kode: "",
+          iku_ikt: "",
+          baseline: 0
+        })
+        .select()
+        .single();
+      if (iErr) throw iErr;
+
+      // 3. Seed empty yearly rows
+      const rows = YEARS.map((y) => ({
+        indikator_id: ind.id,
+        tahun: y,
+        target: 0,
+        actual: 0,
+        budget: 0,
+      }));
+      const { error: vErr } = await supabase.from("renstra_yearly_values").insert(rows);
+      if (vErr) throw vErr;
+    },
+    onSuccess: () => {
+      toast.success("Baris Sasaran ditambahkan");
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const updateSasaranMut = useMutation({
+    mutationFn: async ({ id, nama }: { id: string; nama: string }) => {
+      const { error } = await supabase.from("renstra_sasaran").update({ nama }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidate(),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   return {
     programs,
     isLoading,
     updateValue,
     addProgram: (nama: string) => addProgramMut.mutate(nama),
     deleteProgram: (programId: string) => deleteProgramMut.mutate(programId),
-    addSasaran: (programId: string, nama: string) =>
-      addSasaranMut.mutate({ programId, nama }),
+    addSasaran: (programId: string, nama: string) => addSasaranMut.mutate({ programId, nama }),
+    addSasaranRow: (programId: string) => addSasaranRowMut.mutate(programId),
+    updateSasaran: (id: string, nama: string) => updateSasaranMut.mutate({ id, nama }),
     addIndikator: (_programId: string, sasaranId: string, nama: string, satuan: string) =>
       addIndikatorMut.mutate({ sasaranId, nama, satuan }),
     deleteIndikator: (_programId: string, _sasaranId: string, indikatorId: string) =>
       deleteIndikatorMut.mutate(indikatorId),
     updateIndikator: async (id: string, updates: Partial<Program["sasaran"][number]["indikator"][number]>) => {
-      // Optimistic update
       qc.setQueryData<Program[]>(QK, (prev) =>
         (prev ?? []).map((p) => ({
           ...p,

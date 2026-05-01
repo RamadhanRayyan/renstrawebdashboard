@@ -14,29 +14,95 @@ export type Database = {
   }
   public: {
     Tables: {
+      messages: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_approved: boolean | null
+          role: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id: string
+          is_approved?: boolean | null
+          role?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_approved?: boolean | null
+          role?: string | null
+        }
+        Relationships: []
+      }
       renstra_indikator: {
         Row: {
+          bagian: string | null
+          baseline: number | null
+          borang_aipt: string | null
           created_at: string
           id: string
+          iku_ikt: string | null
+          kode: string | null
+          link: string | null
           nama: string
+          penjelasan: string | null
+          pic: string | null
           sasaran_id: string
           satuan: string
           updated_at: string
           urutan: number
         }
         Insert: {
+          bagian?: string | null
+          baseline?: number | null
+          borang_aipt?: string | null
           created_at?: string
           id?: string
+          iku_ikt?: string | null
+          kode?: string | null
+          link?: string | null
           nama: string
+          penjelasan?: string | null
+          pic?: string | null
           sasaran_id: string
           satuan?: string
           updated_at?: string
           urutan?: number
         }
         Update: {
+          bagian?: string | null
+          baseline?: number | null
+          borang_aipt?: string | null
           created_at?: string
           id?: string
+          iku_ikt?: string | null
+          kode?: string | null
+          link?: string | null
           nama?: string
+          penjelasan?: string | null
+          pic?: string | null
           sasaran_id?: string
           satuan?: string
           updated_at?: string
@@ -115,6 +181,7 @@ export type Database = {
         Row: {
           actual: number
           budget: number
+          bulan: number | null
           created_at: string
           id: string
           indikator_id: string
@@ -125,6 +192,7 @@ export type Database = {
         Insert: {
           actual?: number
           budget?: number
+          bulan?: number | null
           created_at?: string
           id?: string
           indikator_id: string
@@ -135,6 +203,7 @@ export type Database = {
         Update: {
           actual?: number
           budget?: number
+          bulan?: number | null
           created_at?: string
           id?: string
           indikator_id?: string
@@ -157,7 +226,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: { Args: never; Returns: string }
+      is_admin: { Args: never; Returns: boolean }
     }
     Enums: {
       [_ in never]: never

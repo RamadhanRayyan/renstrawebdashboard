@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (mounted && data) {
           setRole(data.role as Role);
-          setIsApproved(data.is_approved);
+          setIsApproved(!!data.is_approved);
         }
       } else {
         if (mounted) {
@@ -89,7 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (mounted && data) {
           setRole(data.role as Role);
-          setIsApproved(data.is_approved);
+          setIsApproved(!!data.is_approved);
         }
       } else {
         if (mounted) {

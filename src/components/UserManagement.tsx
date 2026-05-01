@@ -23,9 +23,9 @@ export function UserManagement() {
       .order("created_at", { ascending: false });
 
     if (error) {
-      toast.error("Gagal memuat daftar pengguna");
+      toast.error("Gagal mengambil data pengguna");
     } else {
-      setUsers(data || []);
+      setUsers((data || []) as Profile[]);
     }
     setIsLoading(false);
   };

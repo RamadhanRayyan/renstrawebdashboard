@@ -171,8 +171,8 @@ export function RenstraTable({ isGuest = false }: { isGuest?: boolean }) {
 }
 
 function MonitoringGroup({ program, no, selectedYear, isGuest }: { program: any, no: number, selectedYear: Year, isGuest: boolean }) {
-  const indicators = program.sasaran.flatMap(s => 
-    s.indikator.map(i => ({ ...i, sasaranNama: s.nama }))
+  const indicators = program.sasaran.flatMap((s: any) => 
+    s.indikator.map((i: any) => ({ ...i, sasaranNama: s.nama }))
   );
 
   return (
@@ -187,7 +187,7 @@ function MonitoringGroup({ program, no, selectedYear, isGuest }: { program: any,
         </TableCell>
       </TableRow>
 
-      {indicators.map((ind, iIdx) => (
+      {indicators.map((ind: any, iIdx: number) => (
         <TableRow key={ind.id} className="hover:bg-muted/30 transition-colors divide-x divide-border">
           <TableCell className="text-center text-muted-foreground border-b sticky left-0 bg-background z-10">
             {no}.{iIdx + 1}
