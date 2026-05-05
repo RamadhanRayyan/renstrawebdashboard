@@ -1,90 +1,123 @@
-import { useCallback } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { YEARS, type Program, type Year, emptyValues } from "@/lib/renstra-data";
 import { toast } from "sonner";
 
 const QK = ["renstra", "all"] as const;
 
+/**
+ * Optimized fetcher that uses a single nested query to get all data at once.
+ * This is much faster than multiple parallel queries.
+ */
 async function fetchAll(): Promise<Program[]> {
-  const [progRes, sasRes, indRes, valRes] = await Promise.all([
-    supabase.from("renstra_programs").select("*").order("urutan").order("created_at"),
-    supabase.from("renstra_sasaran").select("*").order("urutan").order("created_at"),
-    supabase.from("renstra_indikator").select("*").order("urutan").order("created_at"),
-    supabase.from("renstra_yearly_values").select("*"),
-  ]);
+  const { data, error } = await supabase
+    .from("renstra_programs")
+    .select(`
+      id,
+      nama,
+      urutan,
+      sasaran:renstra_sasaran(
+        id,
+        nama,
+        urutan,
+        indikator:renstra_indikator(
+          id,
+          nama,
+          satuan,
+          bagian,
+          borang_aipt,
+          kode,
+          iku_ikt,
+          baseline,
+          penjelasan,
+          pic,
+          link,
+          urutan,
+          values:renstra_yearly_values(
+            tahun,
+            bulan,
+            target,
+            actual,
+            budget
+          )
+        )
+      )
+    `)
+    .order("urutan");
 
-  if (progRes.error) throw progRes.error;
-  if (sasRes.error) throw sasRes.error;
-  if (indRes.error) throw indRes.error;
-  if (valRes.error) throw valRes.error;
-
-  const valuesByInd = new Map<string, ReturnType<typeof emptyValues>>();
-  for (const v of valRes.data ?? []) {
-    let map = valuesByInd.get(v.indikator_id);
-    if (!map) {
-      map = emptyValues();
-      valuesByInd.set(v.indikator_id, map);
-    }
-    if (YEARS.includes(v.tahun as Year)) {
-      const yearData = map[v.tahun as Year];
-      if (v.bulan === 0 || v.bulan === null) {
-        yearData.target = Number(v.target) || 0;
-        yearData.actual = Number(v.actual) || 0;
-        yearData.budget = Number(v.budget) || 0;
-      } else {
-        yearData.months[v.bulan] = { actual: Number(v.actual) || 0 };
-      }
-    }
+  if (error) {
+    console.error("Fetch Error:", error);
+    throw error;
   }
 
-  const indBySasaran = new Map<string, Program["sasaran"][number]["indikator"]>();
-  for (const i of indRes.data ?? []) {
-    const arr = indBySasaran.get(i.sasaran_id) ?? [];
-    arr.push({
-      id: i.id,
-      nama: i.nama,
-      satuan: i.satuan ?? "",
-      bagian: i.bagian ?? "",
-      borang_aipt: i.borang_aipt ?? "",
-      kode: i.kode ?? "",
-      iku_ikt: i.iku_ikt ?? "",
-      baseline: Number(i.baseline) || 0,
-      penjelasan: i.penjelasan ?? "",
-      pic: i.pic ?? "",
-      link: i.link ?? "",
-      values: valuesByInd.get(i.id) ?? emptyValues(),
-    });
-    indBySasaran.set(i.sasaran_id, arr);
-  }
-
-  const sasByProgram = new Map<string, Program["sasaran"]>();
-  for (const s of sasRes.data ?? []) {
-    const arr = sasByProgram.get(s.program_id) ?? [];
-    arr.push({
-      id: s.id,
-      nama: s.nama,
-      indikator: indBySasaran.get(s.id) ?? [],
-    });
-    sasByProgram.set(s.program_id, arr);
-  }
-
-  return (progRes.data ?? []).map((p) => ({
+  // Transform nested Supabase data into our app's Program structure
+  return (data || []).map((p: any) => ({
     id: p.id,
     nama: p.nama,
-    sasaran: sasByProgram.get(p.id) ?? [],
+    sasaran: (p.sasaran || [])
+      .sort((a: any, b: any) => (a.urutan || 0) - (b.urutan || 0))
+      .map((s: any) => ({
+        id: s.id,
+        nama: s.nama,
+        indikator: (s.indikator || [])
+          .sort((a: any, b: any) => (a.urutan || 0) - (b.urutan || 0))
+          .map((ind: any) => {
+            // Reconstruct the values object (target, actual, budget per year + monthly values)
+            const values = emptyValues();
+            (ind.values || []).forEach((v: any) => {
+              const year = v.tahun as Year;
+              if (YEARS.includes(year)) {
+                if (v.bulan === 0 || v.bulan === null) {
+                  values[year].target = Number(v.target) || 0;
+                  values[year].actual = Number(v.actual) || 0;
+                  values[year].budget = Number(v.budget) || 0;
+                } else if (v.bulan >= 1 && v.bulan <= 12) {
+                  values[year].months[v.bulan] = { actual: Number(v.actual) || 0 };
+                }
+              }
+            });
+
+            return {
+              id: ind.id,
+              nama: ind.nama,
+              satuan: ind.satuan || "",
+              bagian: ind.bagian || "",
+              borang_aipt: ind.borang_aipt || "",
+              kode: ind.kode || "",
+              iku_ikt: ind.iku_ikt || "",
+              baseline: Number(ind.baseline) || 0,
+              penjelasan: ind.penjelasan || "",
+              pic: ind.pic || "",
+              link: ind.link || "",
+              values,
+            };
+          }),
+      })),
   }));
 }
 
+export const renstraQueryOptions = queryOptions({
+  queryKey: QK,
+  queryFn: fetchAll,
+  staleTime: 5 * 60 * 1000, // 5 minutes cache
+  gcTime: 30 * 60 * 1000, // 30 minutes garbage collection
+  retry: 2,
+  retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+});
+
 export function useRenstra() {
   const qc = useQueryClient();
-  const { data: programs = [], isLoading } = useQuery({
-    queryKey: QK,
-    queryFn: fetchAll,
-    staleTime: 30_000,
-  });
+  const {
+    data: programs = [],
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useQuery(renstraQueryOptions);
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: QK });
+  const invalidate = useCallback(() => qc.invalidateQueries({ queryKey: QK }), [qc]);
 
   const updateValue = useCallback(
     async (
@@ -139,7 +172,7 @@ export function useRenstra() {
         invalidate();
       }
     },
-    [qc],
+    [qc, invalidate],
   );
 
   const addProgramMut = useMutation({
@@ -233,37 +266,39 @@ export function useRenstra() {
   });
   
   const addSasaranRowMut = useMutation({
-    mutationFn: async (programId: string) => {
-      // 1. Create empty sasaran
+    mutationFn: async (payload: any) => {
+      const { programId, sasaranNama, indikatorNama, bagian, borang_aipt, kode, iku_ikt, baseline, satuan, penjelasan, pic, link, targetTahunan, selectedYear } = payload;
+      
       const { data: sasaran, error: sErr } = await supabase
         .from("renstra_sasaran")
-        .insert({ program_id: programId, nama: "" })
+        .insert({ program_id: programId, nama: sasaranNama })
         .select()
         .single();
       if (sErr) throw sErr;
 
-      // 2. Create empty indikator
       const { data: ind, error: iErr } = await supabase
         .from("renstra_indikator")
         .insert({ 
           sasaran_id: sasaran.id, 
-          nama: "", 
-          satuan: "",
-          bagian: "",
-          borang_aipt: "",
-          kode: "",
-          iku_ikt: "",
-          baseline: 0
+          nama: indikatorNama, 
+          satuan: satuan || "",
+          bagian: bagian || "",
+          borang_aipt: borang_aipt || "",
+          kode: kode || "",
+          iku_ikt: iku_ikt || "",
+          baseline: baseline || 0,
+          penjelasan: penjelasan || "",
+          pic: pic || "",
+          link: link || ""
         })
         .select()
         .single();
       if (iErr) throw iErr;
 
-      // 3. Seed empty yearly rows
       const rows = YEARS.map((y) => ({
         indikator_id: ind.id,
         tahun: y,
-        target: 0,
+        target: y === selectedYear ? (targetTahunan || 0) : 0,
         actual: 0,
         budget: 0,
       }));
@@ -271,7 +306,7 @@ export function useRenstra() {
       if (vErr) throw vErr;
     },
     onSuccess: () => {
-      toast.success("Baris Sasaran ditambahkan");
+      toast.success("Sasaran dan Indikator berhasil ditambahkan");
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -286,36 +321,65 @@ export function useRenstra() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  return {
+  const updateIndikator = useCallback(async (id: string, updates: Partial<Program["sasaran"][number]["indikator"][number]>) => {
+    qc.setQueryData<Program[]>(QK, (prev) =>
+      (prev ?? []).map((p) => ({
+        ...p,
+        sasaran: p.sasaran.map((s) => ({
+          ...s,
+          indikator: s.indikator.map((i) => (i.id !== id ? i : { ...i, ...updates })),
+        })),
+      })),
+    );
+
+    const { error } = await supabase.from("renstra_indikator").update(updates as never).eq("id", id);
+    if (error) {
+      toast.error("Gagal update indikator: " + error.message);
+      invalidate();
+    }
+  }, [qc, invalidate]);
+
+  const refetchRenstra = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+
+  return useMemo(() => ({
     programs,
     isLoading,
+    isFetching,
+    isError,
+    error,
+    refetchRenstra,
     updateValue,
     addProgram: (nama: string) => addProgramMut.mutate(nama),
     deleteProgram: (programId: string) => deleteProgramMut.mutate(programId),
     addSasaran: (programId: string, nama: string) => addSasaranMut.mutate({ programId, nama }),
-    addSasaranRow: (programId: string) => addSasaranRowMut.mutate(programId),
+    addSasaranRow: (payload: any) => addSasaranRowMut.mutate(payload),
     updateSasaran: (id: string, nama: string) => updateSasaranMut.mutate({ id, nama }),
     addIndikator: (_programId: string, sasaranId: string, nama: string, satuan: string) =>
       addIndikatorMut.mutate({ sasaranId, nama, satuan }),
     deleteIndikator: (_programId: string, _sasaranId: string, indikatorId: string) =>
       deleteIndikatorMut.mutate(indikatorId),
-    updateIndikator: async (id: string, updates: Partial<Program["sasaran"][number]["indikator"][number]>) => {
-      qc.setQueryData<Program[]>(QK, (prev) =>
-        (prev ?? []).map((p) => ({
-          ...p,
-          sasaran: p.sasaran.map((s) => ({
-            ...s,
-            indikator: s.indikator.map((i) => (i.id !== id ? i : { ...i, ...updates })),
-          })),
-        })),
-      );
-
-      const { error } = await supabase.from("renstra_indikator").update(updates as never).eq("id", id);
-      if (error) {
-        toast.error("Gagal update indikator: " + error.message);
-        invalidate();
-      }
-    },
-    reset: () => invalidate(),
-  };
+    updateIndikator,
+    reset: invalidate,
+  }), [
+    programs,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetchRenstra,
+    updateValue,
+    updateIndikator, 
+    invalidate,
+    addProgramMut,
+    deleteProgramMut,
+    addSasaranMut,
+    addSasaranRowMut,
+    updateSasaranMut,
+    addIndikatorMut,
+    deleteIndikatorMut
+  ]);
 }
+
+

@@ -1,121 +1,154 @@
-import { Link, useNavigate } from "@tanstack/react-router";
-import { LayoutDashboard, Table2, Target, LogOut, User } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import {
+  LayoutDashboard,
+  Table2,
+  Target,
+  LogOut,
+  User,
+  PlusCircle,
+  Sparkles,
+} from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "./ui/button";
+import { useState } from "react";
+import { InputCapaianDialog } from "./InputCapaianDialog";
 
 interface Props {
   onNavigate?: () => void;
 }
 
 export function AppSidebar({ onNavigate }: Props) {
-  const { role, signOut, user } = useAuth();
-  const navigate = useNavigate();
+  const { role, signOut, user, isApproved } = useAuth();
+  const [isInputOpen, setIsInputOpen] = useState(false);
 
-  const isAdmin = role === "admin";
+  const isAdmin = role === "admin" && isApproved;
 
   const NAV = [
     { to: "/", label: "Executive Overview", icon: LayoutDashboard },
-    { 
-      to: isAdmin ? "/admin" : "/renstra", 
-      label: isAdmin ? "Master Data (CRUD)" : "Data Monitoring", 
-      icon: isAdmin ? Target : Table2 
+    {
+      to: isAdmin ? "/admin" : "/renstra",
+      label: isAdmin ? "Admin Panel" : "Data Monitoring",
+      icon: isAdmin ? Target : Table2,
     },
   ];
 
   const handleSignOut = async () => {
     try {
       import("sonner").then(({ toast }) => toast.success("Sedang keluar..."));
-      
-      // Bersihkan semua state lokal dan sesi
       localStorage.clear();
       sessionStorage.clear();
-      
-      // Panggil signOut (background)
       signOut().catch(console.error);
-      
-      // Paksa pindah halaman secara instan
-      window.location.replace("/#/login");
-      
-      // Fallback reload jika replace gagal
+      window.location.replace("/login");
       setTimeout(() => {
-        window.location.href = "/#/login";
+        window.location.href = "/login";
         window.location.reload();
       }, 300);
-    } catch (error) {
-      window.location.replace("/#/login");
+    } catch {
+      window.location.replace("/login");
     }
   };
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
-      <div className="px-5 py-5 border-b border-sidebar-border">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-lg bg-sidebar-primary/15 flex items-center justify-center ring-1 ring-sidebar-primary/30">
-            <Target className="h-5 w-5 text-sidebar-primary" />
-          </div>
-          <div className="min-w-0">
-            <div className="text-[10px] uppercase tracking-[0.2em] text-sidebar-foreground/60">
-              Renstra
+    <>
+      <aside className="flex h-full w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
+        {/* Brand */}
+        <div className="px-5 py-8 border-b border-sidebar-border bg-gradient-to-b from-primary/5 to-transparent">
+          <div className="flex flex-col gap-4">
+            <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+              <Target className="h-6 w-6 text-white" />
             </div>
-            <div className="text-sm font-semibold leading-tight">
-              Monitoring 2026–2030
+            <div className="min-w-0">
+              <div className="text-[10px] uppercase font-black tracking-[0.3em] text-primary/70">
+                Renstra
+              </div>
+              <div className="text-lg font-black leading-tight tracking-tight text-foreground">
+                Navigator
+              </div>
+              <div className="text-[10px] text-muted-foreground font-bold opacity-60 mt-0.5">
+                Monitoring 2026–2030
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
-        <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/45 flex items-center justify-between">
-          <span>Workspace</span>
-          {role && <span className="bg-primary/20 text-primary px-1.5 py-0.5 rounded text-[8px] tracking-normal">{role}</span>}
-        </div>
-        {NAV.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            onClick={onNavigate}
-            activeOptions={{ exact: true }}
-            activeProps={{
-              className:
-                "bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-sidebar-primary",
-            }}
-            inactiveProps={{
-              className:
-                "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 border-l-2 border-transparent",
-            }}
-            className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors"
-          >
-            <item.icon className="h-4 w-4 shrink-0" />
-            <span className="truncate">{item.label}</span>
-          </Link>
-        ))}
-      </nav>
-
-      <div className="px-5 py-4 border-t border-sidebar-border space-y-4">
-        {user ? (
-          <>
-            <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
-                <User className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-medium truncate">{user?.email}</div>
-                <div className="text-[10px] text-sidebar-foreground/50 truncate uppercase">{role}</div>
-              </div>
-            </div>
-            
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="w-full justify-start text-sidebar-foreground/70 hover:text-danger hover:bg-danger/10 h-9 px-3"
-              onClick={handleSignOut}
+        {/* CTA: Input Capaian (Admin only) */}
+        {isAdmin && (
+          <div className="px-4 pt-4 pb-2">
+            <Button
+              onClick={() => setIsInputOpen(true)}
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-elegant h-10 gap-2"
             >
-              <LogOut className="h-4 w-4 mr-3" />
-              <span className="text-xs font-medium">Keluar</span>
+              <Sparkles className="h-4 w-4" />
+              Input Capaian
             </Button>
-          </>
-        ) : null}
-      </div>
-    </aside>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+          <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/45 flex items-center justify-between">
+            <span>Menu</span>
+            {role && (
+              <span className="bg-primary/20 text-primary px-1.5 py-0.5 rounded text-[8px] tracking-normal capitalize">
+                {role}
+              </span>
+            )}
+          </div>
+          {NAV.map((item) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              onClick={onNavigate}
+              activeOptions={{ exact: true }}
+              activeProps={{
+                className:
+                  "bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-sidebar-primary",
+              }}
+              inactiveProps={{
+                className:
+                  "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 border-l-2 border-transparent",
+              }}
+              className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors"
+            >
+              <item.icon className="h-4 w-4 shrink-0" />
+              <span className="truncate">{item.label}</span>
+            </Link>
+          ))}
+        </nav>
+
+        {/* User footer */}
+        <div className="px-5 py-4 border-t border-sidebar-border space-y-4">
+          {user ? (
+            <>
+              <div className="flex items-center gap-3">
+                <div className="h-8 w-8 rounded-full bg-muted flex items-center justify-center shrink-0">
+                  <User className="h-4 w-4 text-muted-foreground" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-medium truncate">
+                    {user?.email}
+                  </div>
+                  <div className="text-[10px] text-sidebar-foreground/50 truncate uppercase">
+                    {role}
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start text-sidebar-foreground/70 hover:text-danger hover:bg-danger/10 h-9 px-3"
+                onClick={handleSignOut}
+              >
+                <LogOut className="h-4 w-4 mr-3" />
+                <span className="text-xs font-medium">Keluar</span>
+              </Button>
+            </>
+          ) : null}
+        </div>
+      </aside>
+
+      <InputCapaianDialog open={isInputOpen} onOpenChange={setIsInputOpen} />
+    </>
   );
 }

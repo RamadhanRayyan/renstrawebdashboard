@@ -1,11 +1,12 @@
 import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
   beforeLoad: async ({ context }) => {
@@ -24,58 +25,110 @@ function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [slowHint, setSlowHint] = useState(false);
   const [isRegistering, setIsRegistering] = useState(false);
+  const slowTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const startLoading = () => {
     setLoading(true);
-    
-    if (isRegistering) {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-      if (error) {
-        if (error.message.includes("User already registered")) {
-          toast.error("Email sudah terdaftar. Silakan langsung login atau gunakan email lain.");
-          setIsRegistering(false);
-        } else {
-          toast.error(`Gagal Daftar: ${error.message}`);
-        }
-      } else {
-        toast.success("Registrasi Berhasil!", {
-          description: "Silakan cek kotak masuk email Anda untuk melakukan verifikasi akun sebelum login.",
-          duration: 6000,
-        });
-        setIsRegistering(false);
-      }
-    } else {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      if (error) {
-        toast.error(error.message);
-      } else {
-        toast.success("Login berhasil");
-        navigate({ to: "/" });
-      }
-    }
+    setSlowHint(false);
+    // Show slow-connection hint after 3 seconds
+    slowTimer.current = setTimeout(() => setSlowHint(true), 3000);
+  };
+
+  const stopLoading = () => {
+    if (slowTimer.current) clearTimeout(slowTimer.current);
+    setSlowHint(false);
     setLoading(false);
   };
 
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    startLoading();
+
+    // 10-second timeout so the button can never be stuck forever
+    const timeout = new Promise<{ error: { message: string } }>((_, reject) =>
+      setTimeout(() => reject(new Error("Koneksi timeout. Coba lagi atau periksa internet Anda.")), 10_000)
+    );
+
+    try {
+      if (isRegistering) {
+        const result = await Promise.race([
+          supabase.auth.signUp({ email, password }),
+          timeout,
+        ]) as Awaited<ReturnType<typeof supabase.auth.signUp>>;
+
+        if (result.error) {
+          if (result.error.message.includes("User already registered")) {
+            toast.error("Email sudah terdaftar. Silakan langsung login atau gunakan email lain.");
+            setIsRegistering(false);
+          } else {
+            toast.error(`Gagal Daftar: ${result.error.message}`);
+          }
+        } else {
+          toast.success("Registrasi Berhasil!", {
+            description: "Silakan cek kotak masuk email Anda untuk melakukan verifikasi akun sebelum login.",
+            duration: 6000,
+          });
+          setIsRegistering(false);
+        }
+      } else {
+        const result = await Promise.race([
+          supabase.auth.signInWithPassword({ email, password }),
+          timeout,
+        ]) as Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>;
+
+        if (result.error) {
+          toast.error(result.error.message);
+        } else {
+          toast.success("Login berhasil");
+          
+          // Determine redirect destination based on role
+          try {
+            const { data: profile } = await supabase
+              .from("profiles")
+              .select("role, is_approved")
+              .eq("id", result.data.user.id)
+              .maybeSingle();
+              
+            if (profile?.role === "admin" && profile?.is_approved) {
+              navigate({ to: "/admin" });
+            } else {
+              navigate({ to: "/" });
+            }
+          } catch (e) {
+            navigate({ to: "/" });
+          }
+        }
+      }
+    } catch (err: any) {
+      toast.error(err.message ?? "Terjadi kesalahan. Coba lagi.");
+    } finally {
+      stopLoading();
+    }
+  };
+
   const handleGuestLogin = async () => {
-    setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: "guest@example.com",
-      password: "guestpassword",
-    });
-    if (error) {
-      toast.error("Login Tamu gagal. Pastikan akun guest@example.com sudah dibuat.");
-      setLoading(false);
-    } else {
-      toast.success("Masuk sebagai Tamu");
-      navigate({ to: "/" });
+    startLoading();
+    try {
+      const timeout = new Promise<{ error: { message: string } }>((_, reject) =>
+        setTimeout(() => reject(new Error("Koneksi timeout. Coba lagi.")) , 10_000)
+      );
+      const result = await Promise.race([
+        supabase.auth.signInWithPassword({ email: "guest@example.com", password: "guestpassword" }),
+        timeout,
+      ]) as Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>;
+
+      if (result.error) {
+        toast.error("Login Tamu gagal. Pastikan akun guest@example.com sudah dibuat.");
+      } else {
+        toast.success("Masuk sebagai Tamu");
+        navigate({ to: "/" });
+      }
+    } catch (err: any) {
+      toast.error(err.message ?? "Terjadi kesalahan.");
+    } finally {
+      stopLoading();
     }
   };
 
@@ -116,7 +169,14 @@ function LoginPage() {
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Memproses..." : (isRegistering ? "Daftar" : "Login")}
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {slowHint ? "Koneksi lambat, harap tunggu…" : "Memproses…"}
+                </span>
+              ) : (
+                isRegistering ? "Daftar" : "Login"
+              )}
             </Button>
             
             {!isRegistering && (
@@ -138,7 +198,12 @@ function LoginPage() {
                   onClick={handleGuestLogin}
                   disabled={loading}
                 >
-                  Lihat sebagai Tamu
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Memproses…
+                    </span>
+                  ) : "Lihat sebagai Tamu"}
                 </Button>
               </>
             )}

@@ -1,9 +1,14 @@
-import { createRouter, useRouter, createHashHistory } from "@tanstack/react-router";
+import { createRouter, useRouter, RouterProvider } from "@tanstack/react-router";
 import { QueryClient } from "@tanstack/react-query";
 import { routeTree } from "./routeTree.gen";
 
 function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
-  const router = useRouter();
+  let router: ReturnType<typeof useRouter> | undefined;
+  try {
+    router = useRouter();
+  } catch (e) {
+    // If we're outside the router context, we can't use useRouter()
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -36,7 +41,7 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
         <div className="mt-6 flex items-center justify-center gap-3">
           <button
             onClick={() => {
-              router.invalidate();
+              if (router) router.invalidate();
               reset();
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
@@ -55,18 +60,36 @@ function DefaultErrorComponent({ error, reset }: { error: Error; reset: () => vo
   );
 }
 
+let queryClientInstance: QueryClient | null = null;
+let routerInstance: ReturnType<typeof createRouter> | null = null;
+
 export const getRouter = () => {
-  const queryClient = new QueryClient({
-    defaultOptions: { queries: { staleTime: 30_000, refetchOnWindowFocus: false } },
+  if (routerInstance) return routerInstance;
+
+  queryClientInstance = new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 5 * 60 * 1000,      // 5 min — matches renstraQueryOptions
+        gcTime: 30 * 60 * 1000,        // 30 min garbage collection
+        refetchOnWindowFocus: false,
+        retry: 1,                       // retry once on failure (e.g. cold start)
+      },
+    },
   });
-  const router = createRouter({
+  
+  routerInstance = createRouter({
     routeTree,
-    history: typeof window !== 'undefined' ? createHashHistory() : undefined,
-    context: { queryClient },
+    context: { queryClient: queryClientInstance },
     scrollRestoration: true,
-    defaultPreloadStaleTime: 0,
+    defaultPreloadStaleTime: 60_000,   // 60s — prevents refetch on every link hover
     defaultErrorComponent: DefaultErrorComponent,
   });
 
-  return router;
+  return routerInstance;
 };
+
+declare module '@tanstack/react-router' {
+  interface Register {
+    router: ReturnType<typeof getRouter>;
+  }
+}

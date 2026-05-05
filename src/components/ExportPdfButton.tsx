@@ -1,6 +1,4 @@
 import { useState } from "react";
-import html2canvas from "html2canvas";
-import { jsPDF } from "jspdf";
 import { Button } from "@/components/ui/button";
 import { FileDown, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -23,20 +21,25 @@ export function ExportPdfButton({ targetId, filename = "report.pdf", className }
 
     try {
       setIsExporting(true);
-      
-      // Setup canvas scaling for better quality
-      const canvas = await html2canvas(element, { 
+
+      // Lazy-load heavy PDF libs only when user actually clicks export
+      const [html2canvasModule, { jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+      const html2canvas = html2canvasModule.default;
+
+      const canvas = await html2canvas(element, {
         scale: 2,
         useCORS: true,
         logging: false,
       });
-      
+
       const imgData = canvas.toDataURL("image/png");
-      
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-      
+
       pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
       pdf.save(filename);
       toast.success("Berhasil mengekspor PDF!");

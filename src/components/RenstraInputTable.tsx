@@ -41,18 +41,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { RenstraFetchAlert } from "./RenstraFetchAlert";
 
 export function RenstraInputTable() {
-  const { 
-    programs, 
-    updateValue, 
-    updateIndikator, 
-    addIndikator, 
+  const {
+    programs,
+    updateValue,
+    updateIndikator,
+    addIndikator,
     deleteIndikator,
     addProgram,
     deleteProgram,
     addSasaranRow,
-    updateSasaran
+    updateSasaran,
+    isError,
+    error,
+    refetchRenstra,
   } = useRenstra();
   
   const [selectedYear, setSelectedYear] = useState<Year>(YEARS[0]);
@@ -85,8 +89,10 @@ export function RenstraInputTable() {
 
   return (
     <div className="space-y-6">
+      {isError && <RenstraFetchAlert error={error} onRetry={refetchRenstra} />}
+
       {/* Control Panel */}
-      <Card className="p-4 border bg-background/50 backdrop-blur-md shadow-sm">
+      <Card className="p-4 border bg-background shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="space-y-1.5">
@@ -120,10 +126,10 @@ export function RenstraInputTable() {
       </Card>
 
       {/* Spreadsheet Table */}
-      <Card className="shadow-elegant overflow-hidden border bg-background/50 backdrop-blur-md">
+      <Card className="shadow-elegant overflow-hidden border bg-background">
         <div className="overflow-x-auto max-h-[75vh] scrollbar-thin scrollbar-thumb-primary/20">
           <Table className="min-w-[2800px] text-[11px] border-separate border-spacing-0">
-            <TableHeader className="sticky top-0 bg-secondary/95 backdrop-blur-md z-30 shadow-sm">
+            <TableHeader className="sticky top-0 bg-secondary z-30 shadow-sm">
               <TableRow className="divide-x divide-border">
                 <TableHead className="w-12 text-center font-bold text-foreground border-b sticky left-0 bg-secondary z-40">No</TableHead>
                 <TableHead className="w-64 font-bold text-foreground border-b sticky left-12 bg-secondary z-40">Misi (Program)</TableHead>
@@ -133,13 +139,7 @@ export function RenstraInputTable() {
                 <TableHead className="w-[400px] font-bold text-foreground border-b">INDIKATOR KINERJA RENSTRA</TableHead>
                 <TableHead className="w-24 font-bold text-foreground border-b text-center">IKU/IKT</TableHead>
                 <TableHead className="w-24 font-bold text-foreground border-b text-center bg-amber-50/50">BASELINE</TableHead>
-                
-                {monthlyHeaders.map((m) => (
-                  <TableHead key={m.id} className="w-20 font-bold text-foreground border-b text-center bg-primary/5 uppercase text-[9px]">
-                    {m.name.slice(0, 3)}
-                  </TableHead>
-                ))}
-
+                <TableHead className="w-32 font-bold text-foreground border-b text-center bg-indigo-50/50">TARGET {selectedYear}</TableHead>
                 <TableHead className="w-32 font-bold text-foreground border-b text-center">SATUAN</TableHead>
                 <TableHead className="w-72 font-bold text-foreground border-b">PENJELASAN</TableHead>
                 <TableHead className="w-48 font-bold text-foreground border-b">PIC</TableHead>
@@ -170,7 +170,7 @@ export function RenstraInputTable() {
                 />
               ))}
               
-              {programs.length === 0 && (
+              {!isError && programs.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={30} className="h-40 text-center text-muted-foreground">
                     Belum ada misi. Klik "Tambah Misi Baru" untuk memulai.
@@ -305,19 +305,14 @@ function AddSasaranFullDialog({
     penjelasan: "",
     pic: "",
     link: "",
-    months: {} as Record<number, number>
+    targetTahunan: 0
   });
 
   const handleChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleMonthChange = (m: number, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      months: { ...prev.months, [m]: Number(value) || 0 }
-    }));
-  };
+  // Removed handleMonthChange as it's no longer needed
 
   const handleSubmit = () => {
     if (programId && formData.sasaranNama.trim() && formData.indikatorNama.trim()) {
@@ -327,14 +322,14 @@ function AddSasaranFullDialog({
         selectedYear
       });
       onOpenChange(false);
-      setFormData({ sasaranNama: "", indikatorNama: "", bagian: "", borang_aipt: "", kode: "", iku_ikt: "", baseline: 0, satuan: "", penjelasan: "", pic: "", link: "", months: {} });
+      setFormData({ sasaranNama: "", indikatorNama: "", bagian: "", borang_aipt: "", kode: "", iku_ikt: "", baseline: 0, satuan: "", penjelasan: "", pic: "", link: "", targetTahunan: 0 });
     } else {
       toast.error("Misi (Program) dan Indikator Kinerja wajib diisi!");
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if(!o) setFormData({ sasaranNama: "", indikatorNama: "", bagian: "", borang_aipt: "", kode: "", iku_ikt: "", baseline: 0, satuan: "", penjelasan: "", pic: "", link: "", months: {} }); }}>
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if(!o) setFormData({ sasaranNama: "", indikatorNama: "", bagian: "", borang_aipt: "", kode: "", iku_ikt: "", baseline: 0, satuan: "", penjelasan: "", pic: "", link: "", targetTahunan: 0 }); }}>
       <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Tambah Sasaran & Indikator Baru</DialogTitle>
@@ -396,15 +391,8 @@ function AddSasaranFullDialog({
           </div>
           
           <div className="space-y-2 md:col-span-2 pt-4 border-t">
-            <Label className="block mb-2">Target/Realisasi Bulanan Tahun {selectedYear}</Label>
-            <div className="grid grid-cols-6 gap-2">
-              {['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'].map((m, idx) => (
-                <div key={idx} className="flex flex-col gap-1">
-                  <span className="text-[10px] text-muted-foreground text-center">{m}</span>
-                  <Input type="number" className="h-8 text-xs text-center px-1 font-mono" value={formData.months[idx + 1] || ""} onChange={(e) => handleMonthChange(idx + 1, e.target.value)} placeholder="0" />
-                </div>
-              ))}
-            </div>
+            <Label className="block mb-2">Target Tahunan ({selectedYear})</Label>
+            <Input type="number" className="h-10 font-bold max-w-xs" value={formData.targetTahunan || ""} onChange={(e) => handleChange("targetTahunan", Number(e.target.value) || 0)} placeholder="Masukkan Target..." />
           </div>
         </div>
 
@@ -488,15 +476,9 @@ const MisiGroup = memo(function MisiGroup({
             <Input className="h-9 text-[10px] border-none bg-transparent text-center font-bold px-1" defaultValue={ind.iku_ikt} onBlur={(e) => onUpdateIndikator(ind.id, { iku_ikt: e.target.value })} placeholder="IKU/IKT" />
           </TableCell>
           <TableCell className="p-0 border-b bg-amber-50/20"><Input type="number" className="h-9 text-[10px] border-none bg-transparent text-center font-mono px-1" defaultValue={ind.baseline} onBlur={(e) => onUpdateIndikator(ind.id, { baseline: Number(e.target.value) || 0 })} /></TableCell>
-          {[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => {
-            const val = ind.values[selectedYear];
-            const displayValue = val?.months[m]?.actual || 0;
-            return (
-              <TableCell key={m} className="p-0 border-b bg-primary/5">
-                <Input type="number" className="h-9 text-[10px] border-none bg-transparent text-center font-mono px-1" defaultValue={displayValue} onBlur={(e) => onUpdateValue(ind.id, selectedYear, "actual", Number(e.target.value) || 0, m)} />
-              </TableCell>
-            );
-          })}
+          <TableCell className="p-0 border-b bg-indigo-50/20">
+             <Input type="number" className="h-9 text-[10px] border-none bg-transparent text-center font-bold px-1 text-indigo-700" defaultValue={ind.values[selectedYear]?.target || 0} onBlur={(e) => onUpdateValue(ind.id, selectedYear, "target", Number(e.target.value) || 0, 0)} />
+          </TableCell>
           <TableCell className="p-0 border-b"><Input className="h-9 text-[10px] border-none bg-transparent text-center px-2" defaultValue={ind.satuan} onBlur={(e) => onUpdateIndikator(ind.id, { satuan: e.target.value })} /></TableCell>
           <TableCell className="p-0 border-b"><Input className="h-9 text-[10px] border-none bg-transparent px-2" defaultValue={ind.penjelasan} onBlur={(e) => onUpdateIndikator(ind.id, { penjelasan: e.target.value })} /></TableCell>
           <TableCell className="p-0 border-b"><Input className="h-9 text-[10px] border-none bg-transparent px-2" defaultValue={ind.pic} onBlur={(e) => onUpdateIndikator(ind.id, { pic: e.target.value })} /></TableCell>

@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from "react";
 import { User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -26,91 +26,115 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isApproved, setIsApproved] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Track the last userId we successfully fetched a profile for.
+  // This prevents duplicate fetchProfile calls when Supabase emits
+  // multiple SIGNED_IN events for the same session (known SDK behavior).
+  const lastFetchedUserId = useRef<string | null>(null);
+  const isFetchingProfile = useRef(false);
+
+  const fetchProfile = useCallback(async (userId: string) => {
+    // Deduplicate: skip if already fetching or already done for this user
+    if (isFetchingProfile.current || lastFetchedUserId.current === userId) {
+      return;
+    }
+
+    isFetchingProfile.current = true;
+    try {
+      let { data, error } = await supabase
+        .from("profiles")
+        .select("role, is_approved")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (error) {
+        console.error("[Auth] Profile fetch error:", error);
+        return;
+      }
+
+      // Auto-create guest profile if missing
+      if (!data) {
+        const { data: newProfile, error: insertError } = await supabase
+          .from("profiles")
+          .insert([{ id: userId, role: "guest", is_approved: true }])
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error("[Auth] Profile creation error:", insertError);
+          return;
+        }
+        data = newProfile;
+      }
+
+      lastFetchedUserId.current = userId;
+      setRole(data.role as Role);
+      setIsApproved(!!data.is_approved);
+    } catch (e) {
+      console.error("[Auth] Unexpected error in fetchProfile:", e);
+    } finally {
+      isFetchingProfile.current = false;
+    }
+  }, []);
+
   useEffect(() => {
     let mounted = true;
 
-    async function getSession() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        if (mounted) setUser(session.user);
-        
-        // Fetch profile
-        let { data, error } = await supabase
-          .from("profiles")
-          .select("role, is_approved")
-          .eq("id", session.user.id)
-          .maybeSingle();
-
-        // If profile doesn't exist, create it as guest
-        if (!data && !error) {
-          const { data: newProfile, error: insertError } = await supabase
-            .from("profiles")
-            .insert([{ id: session.user.id, role: "guest", is_approved: true }])
-            .select()
-            .single();
-          
-          if (!insertError) data = newProfile;
-        }
-
-        if (mounted && data) {
-          setRole(data.role as Role);
-          setIsApproved(!!data.is_approved);
-        }
-      } else {
-        if (mounted) {
-          setUser(null);
-          setRole(null);
-          setIsApproved(false);
-        }
+    // Safety timeout — 15s to handle Supabase cold starts (free tier can take 8-10s)
+    const safetyTimer = setTimeout(() => {
+      if (mounted) {
+        console.warn("[Auth] Safety timeout — forcing isLoading=false");
+        setIsLoading(false);
       }
-      if (mounted) setIsLoading(false);
-    }
+    }, 15_000);
 
-    getSession();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // Step 1: Bootstrap from localStorage immediately (no network call).
+    // This resolves isLoading quickly for returning users.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
       if (session?.user) {
-        if (mounted) setUser(session.user);
-        
-        let { data, error } = await supabase
-          .from("profiles")
-          .select("role, is_approved")
-          .eq("id", session.user.id)
-          .maybeSingle();
-
-        if (!data && !error) {
-          const { data: newProfile, error: insertError } = await supabase
-            .from("profiles")
-            .insert([{ id: session.user.id, role: "guest", is_approved: true }])
-            .select()
-            .single();
-          if (!insertError) data = newProfile;
-        }
-
-        if (mounted && data) {
-          setRole(data.role as Role);
-          setIsApproved(!!data.is_approved);
-        }
-      } else {
-        if (mounted) {
-          setUser(null);
-          setRole(null);
-          setIsApproved(false);
-        }
+        setUser(session.user);
+        // Kick off profile fetch in background; don't block loading state
+        fetchProfile(session.user.id);
       }
-      if (mounted) setIsLoading(false);
+      // Mark loading done — onAuthStateChange handles all future changes
+      clearTimeout(safetyTimer);
+      setIsLoading(false);
     });
+
+    // Step 2: Subscribe for real-time auth changes (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (!mounted) return;
+
+        // INITIAL_SESSION is already handled by getSession() above — skip it
+        // to avoid a redundant fetchProfile call.
+        if (event === "INITIAL_SESSION") return;
+
+        if (session?.user) {
+          setUser(session.user);
+          await fetchProfile(session.user.id);
+        } else {
+          // Signed out — reset everything including the dedup ref
+          setUser(null);
+          setRole(null);
+          setIsApproved(false);
+          lastFetchedUserId.current = null;
+        }
+      }
+    );
 
     return () => {
       mounted = false;
+      clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchProfile]);
 
   const signOut = async () => {
     setUser(null);
     setRole(null);
     setIsApproved(false);
+    lastFetchedUserId.current = null;
     await supabase.auth.signOut();
   };
 

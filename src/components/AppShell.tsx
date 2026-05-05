@@ -15,7 +15,9 @@ export function AppShell({ title, subtitle, actions, children }: AppShellProps) 
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex w-full bg-background">
+    <div className="min-h-screen flex w-full bg-slate-50/50 dark:bg-slate-950/50">
+      {/* Removed heavy blur background for performance */}
+
       {/* Desktop sidebar */}
       <div className="hidden lg:flex sticky top-0 h-screen shrink-0">
         <AppSidebar />
@@ -30,36 +32,39 @@ export function AppShell({ title, subtitle, actions, children }: AppShellProps) 
       </Sheet>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="border-b border-border bg-card/70 backdrop-blur-sm sticky top-0 z-10">
-          <div className="px-4 sm:px-6 lg:px-10 py-4 flex items-center gap-3">
+        <header className="border-b border-border bg-background sticky top-0 z-10">
+          <div className="px-4 sm:px-6 lg:px-10 py-5 flex items-center gap-4">
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden h-9 w-9 -ml-1 shrink-0"
+              className="lg:hidden h-10 w-10 -ml-1 shrink-0 bg-background/50 border border-border/50"
               onClick={() => setMobileOpen(true)}
               aria-label="Buka menu"
             >
               <Menu className="h-5 w-5" />
             </Button>
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-display uppercase tracking-tight text-foreground truncate">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-display font-black uppercase tracking-tight text-foreground truncate drop-shadow-sm">
                 {title}
               </h1>
               {subtitle && (
-                <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">
+                <p className="text-xs sm:text-sm text-muted-foreground font-medium mt-0.5 truncate opacity-80">
                   {subtitle}
                 </p>
               )}
             </div>
             {actions && (
-              <div className="flex items-center gap-2 shrink-0">{actions}</div>
+              <div className="flex items-center gap-3 shrink-0">{actions}</div>
             )}
           </div>
         </header>
-        <main className="flex-1 px-4 sm:px-6 lg:px-10 py-5 sm:py-7 lg:py-8">
-          {children}
+        <main className="flex-1 px-4 sm:px-6 lg:px-10 py-6 sm:py-8 lg:py-10">
+          <div className="mx-auto max-w-7xl">
+            {children}
+          </div>
         </main>
       </div>
     </div>
   );
 }
+
