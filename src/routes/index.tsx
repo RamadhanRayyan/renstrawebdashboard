@@ -30,7 +30,7 @@ function IndexPage() {
   const { programs, isError, error, refetchRenstra } = useRenstra();
   const [isInputOpen, setIsInputOpen] = useState(false);
 
-  const showSpinner = isAuthLoading && !user;
+  const showSpinner = isAuthLoading;
   const isGuest = role === "guest" || !role;
   const isAdmin = role === "admin" && isApproved;
 

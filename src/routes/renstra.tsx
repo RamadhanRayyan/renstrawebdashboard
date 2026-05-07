@@ -40,7 +40,7 @@ function RenstraMonitoringPage() {
         </div>
       }
     >
-      {isAuthLoading && !user ? (
+      {isAuthLoading ? (
         <div className="flex h-[60vh] items-center justify-center">
           <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
         </div>

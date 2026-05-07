@@ -38,8 +38,8 @@ function AdminDashboardPage() {
 
   const [isInputCapaianOpen, setIsInputCapaianOpen] = useState(false);
 
-  // Only block if completely unknown
-  if (isAuthLoading && !user) {
+  // Wait for auth initialization (including profile/role fetch)
+  if (isAuthLoading) {
     return (
       <AppShell title="Memuat...">
         <div className="flex h-[60vh] items-center justify-center">

@@ -89,16 +89,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Step 1: Bootstrap from localStorage immediately (no network call).
     // This resolves isLoading quickly for returning users.
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!mounted) return;
       if (session?.user) {
         setUser(session.user);
-        // Kick off profile fetch in background; don't block loading state
-        fetchProfile(session.user.id);
+        // CRITICAL: Wait for profile fetch so components have role/isApproved
+        // before we mark isLoading as false.
+        await fetchProfile(session.user.id);
       }
       // Mark loading done — onAuthStateChange handles all future changes
-      clearTimeout(safetyTimer);
-      setIsLoading(false);
+      if (mounted) {
+        clearTimeout(safetyTimer);
+        setIsLoading(false);
+      }
     });
 
     // Step 2: Subscribe for real-time auth changes (login, logout, token refresh)
