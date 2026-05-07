@@ -13,7 +13,7 @@ export const Route = createFileRoute("/login")({
     // If we're already logged in, go to the dashboard
     // Wait, the router context doesn't have auth yet, we'll use useAuth hook inside component or just check session directly here.
     const { data } = await supabase.auth.getSession();
-    if (data.session) {
+    if (data.session && typeof window !== "undefined") {
       throw redirect({ to: "/" });
     }
   },

@@ -9,6 +9,18 @@
 [build.environment]
   NITRO_PRESET = "netlify"
 
+# Ensure assets are served directly from the CDN and don't hit the server function
+[[redirects]]
+  from = "/assets/*"
+  to = "/assets/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/favicon.ico"
+  to = "/favicon.ico"
+  status = 200
+
+# Catch-all for SPA/SSR
 [[redirects]]
   from = "/*"
   to = "/.netlify/functions/server"

@@ -44,7 +44,7 @@ export function AppShell({ title, subtitle, actions, children }: AppShellProps) 
               <Menu className="h-5 w-5" />
             </Button>
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-display font-black uppercase tracking-tight text-foreground truncate drop-shadow-sm">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-display font-black uppercase tracking-tight text-foreground truncate">
                 {title}
               </h1>
               {subtitle && (
