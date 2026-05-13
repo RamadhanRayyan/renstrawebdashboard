@@ -22,8 +22,9 @@ export const Route = createFileRoute("/renstra")({
 });
 
 function RenstraMonitoringPage() {
-  const { user, isLoading: isAuthLoading } = useAuth();
+  const { role, isApproved, isLoading: isAuthLoading } = useAuth();
   const { isFetching } = useRenstra();
+  const isGuest = !(role === "admin" && isApproved);
 
   return (
     <AppShell
@@ -50,7 +51,7 @@ function RenstraMonitoringPage() {
             id="report-content"
             className="bg-card p-6 rounded-2xl border border-border/50"
           >
-            <RenstraTable isGuest={true} />
+            <RenstraTable isGuest={isGuest} />
           </div>
         </div>
       )}

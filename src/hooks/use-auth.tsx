@@ -23,58 +23,101 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<Role | null>(null);
-  const [isApproved, setIsApproved] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isApproved, setIsApproved] = useState<boolean>(false);
+  const [isAuthBootstrapped, setIsAuthBootstrapped] = useState(false);
+  const [profileStatus, setProfileStatus] = useState<"idle" | "loading" | "loaded">("idle");
 
   // Track the last userId we successfully fetched a profile for.
   // This prevents duplicate fetchProfile calls when Supabase emits
   // multiple SIGNED_IN events for the same session (known SDK behavior).
   const lastFetchedUserId = useRef<string | null>(null);
-  const isFetchingProfile = useRef(false);
+  const inFlightProfilePromise = useRef<Promise<void> | null>(null);
+  const inFlightProfileUserId = useRef<string | null>(null);
+
+  const resetProfileState = useCallback(() => {
+    setRole(null);
+    setIsApproved(false);
+    setProfileStatus("idle");
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("auth_user_id");
+      localStorage.removeItem("auth_role");
+      localStorage.removeItem("auth_isApproved");
+    }
+    lastFetchedUserId.current = null;
+    inFlightProfilePromise.current = null;
+    inFlightProfileUserId.current = null;
+  }, []);
+
+  const applyProfileState = useCallback((userId: string, nextRole: Role, nextIsApproved: boolean) => {
+    lastFetchedUserId.current = userId;
+    setRole(nextRole);
+    setIsApproved(nextIsApproved);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("auth_user_id", userId);
+      localStorage.setItem("auth_role", nextRole);
+      localStorage.setItem("auth_isApproved", String(nextIsApproved));
+    }
+  }, []);
 
   const fetchProfile = useCallback(async (userId: string) => {
-    // Deduplicate: skip if already fetching or already done for this user
-    if (isFetchingProfile.current || lastFetchedUserId.current === userId) {
+    if (lastFetchedUserId.current === userId) {
+      setProfileStatus("loaded");
       return;
     }
 
-    isFetchingProfile.current = true;
-    try {
-      let { data, error } = await supabase
-        .from("profiles")
-        .select("role, is_approved")
-        .eq("id", userId)
-        .maybeSingle();
+    if (
+      inFlightProfilePromise.current &&
+      inFlightProfileUserId.current === userId
+    ) {
+      await inFlightProfilePromise.current;
+      return;
+    }
 
-      if (error) {
-        console.error("[Auth] Profile fetch error:", error);
-        return;
-      }
+    setProfileStatus("loading");
 
-      // Auto-create guest profile if missing
-      if (!data) {
-        const { data: newProfile, error: insertError } = await supabase
+    const profilePromise = (async () => {
+      try {
+        let { data, error } = await supabase
           .from("profiles")
-          .insert([{ id: userId, role: "guest", is_approved: true }])
-          .select()
-          .single();
+          .select("role, is_approved")
+          .eq("id", userId)
+          .maybeSingle();
 
-        if (insertError) {
-          console.error("[Auth] Profile creation error:", insertError);
+        if (error) {
+          console.error("[Auth] Profile fetch error:", error);
           return;
         }
-        data = newProfile;
-      }
 
-      lastFetchedUserId.current = userId;
-      setRole(data.role as Role);
-      setIsApproved(!!data.is_approved);
-    } catch (e) {
-      console.error("[Auth] Unexpected error in fetchProfile:", e);
-    } finally {
-      isFetchingProfile.current = false;
-    }
-  }, []);
+        // Auto-create guest profile if missing
+        if (!data) {
+          const { data: newProfile, error: insertError } = await supabase
+            .from("profiles")
+            .insert([{ id: userId, role: "guest", is_approved: true }])
+            .select("role, is_approved")
+            .single();
+
+          if (insertError) {
+            console.error("[Auth] Profile creation error:", insertError);
+            return;
+          }
+          data = newProfile;
+        }
+
+        applyProfileState(userId, data.role as Role, !!data.is_approved);
+      } catch (e) {
+        console.error("[Auth] Unexpected error in fetchProfile:", e);
+      } finally {
+        setProfileStatus("loaded");
+        inFlightProfilePromise.current = null;
+        inFlightProfileUserId.current = null;
+      }
+    })();
+
+    inFlightProfilePromise.current = profilePromise;
+    inFlightProfileUserId.current = userId;
+
+    await profilePromise;
+  }, [applyProfileState]);
 
   useEffect(() => {
     let mounted = true;
@@ -82,25 +125,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Safety timeout — 15s to handle Supabase cold starts (free tier can take 8-10s)
     const safetyTimer = setTimeout(() => {
       if (mounted) {
-        console.warn("[Auth] Safety timeout — forcing isLoading=false");
-        setIsLoading(false);
+        console.warn("[Auth] Safety timeout — forcing auth bootstrap/profile completion");
+        setIsAuthBootstrapped(true);
+        setProfileStatus((current) => (current === "loading" ? "loaded" : current));
       }
     }, 15_000);
 
     // Step 1: Bootstrap from localStorage immediately (no network call).
-    // This resolves isLoading quickly for returning users.
+    // This resolves isLoading quickly for returning users, but signed-in users
+    // still wait until their profile role has been loaded.
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!mounted) return;
+
       if (session?.user) {
         setUser(session.user);
-        // CRITICAL: Wait for profile fetch so components have role/isApproved
-        // before we mark isLoading as false.
+        if (typeof window !== "undefined" && localStorage.getItem("auth_user_id") === session.user.id) {
+          const cachedRole = localStorage.getItem("auth_role") as Role | null;
+          if (cachedRole === "admin" || cachedRole === "guest") {
+            setRole(cachedRole);
+            setIsApproved(localStorage.getItem("auth_isApproved") === "true");
+          }
+        }
         await fetchProfile(session.user.id);
+      } else {
+        setUser(null);
+        resetProfileState();
       }
-      // Mark loading done — onAuthStateChange handles all future changes
+
       if (mounted) {
-        clearTimeout(safetyTimer);
-        setIsLoading(false);
+        setIsAuthBootstrapped(true);
       }
     });
 
@@ -117,12 +170,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(session.user);
           await fetchProfile(session.user.id);
         } else {
-          // Signed out — reset everything including the dedup ref
           setUser(null);
-          setRole(null);
-          setIsApproved(false);
-          lastFetchedUserId.current = null;
+          resetProfileState();
         }
+
+        setIsAuthBootstrapped(true);
       }
     );
 
@@ -131,15 +183,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       clearTimeout(safetyTimer);
       subscription.unsubscribe();
     };
-  }, [fetchProfile]);
+  }, [fetchProfile, resetProfileState]);
 
   const signOut = async () => {
     setUser(null);
-    setRole(null);
-    setIsApproved(false);
-    lastFetchedUserId.current = null;
+    resetProfileState();
     await supabase.auth.signOut();
   };
+
+  const isLoading = !isAuthBootstrapped || (user !== null && profileStatus !== "loaded");
 
   return (
     <AuthContext.Provider value={{ user, role, isApproved, isLoading, signOut }}>

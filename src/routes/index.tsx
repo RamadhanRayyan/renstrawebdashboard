@@ -31,8 +31,8 @@ function IndexPage() {
   const [isInputOpen, setIsInputOpen] = useState(false);
 
   const showSpinner = isAuthLoading;
-  const isGuest = role === "guest" || !role;
-  const isAdmin = role === "admin" && isApproved;
+  const isGuest = !isAuthLoading && (role === "guest" || !role);
+  const isAdmin = !isAuthLoading && role === "admin" && isApproved;
 
   return (
     <AppShell
