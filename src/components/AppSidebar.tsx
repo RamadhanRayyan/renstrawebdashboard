@@ -1,11 +1,11 @@
-import { Link } from "@tanstack/react-router";
+﻿import { Link } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Table2,
   Target,
   LogOut,
   User,
-  PlusCircle,
+  BarChart3,
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -18,19 +18,23 @@ interface Props {
 }
 
 export function AppSidebar({ onNavigate }: Props) {
-  const { role, signOut, user, isApproved } = useAuth();
+  const { role, signOut, user, isApproved, isLoading } = useAuth();
   const [isInputOpen, setIsInputOpen] = useState(false);
 
   const isAdmin = role === "admin" && isApproved;
+  const isResolvingRole = isLoading || (user && !role);
 
-  const NAV = [
-    { to: "/", label: "Executive Overview", icon: LayoutDashboard },
-    {
-      to: isAdmin ? "/admin" : "/renstra",
-      label: isAdmin ? "Admin Panel" : "Data Monitoring",
-      icon: isAdmin ? Target : Table2,
-    },
-  ];
+  const NAV = isResolvingRole
+    ? []
+    : isAdmin
+      ? [
+          { to: "/admin-dashboard", label: "Dashboard Admin", icon: LayoutDashboard },
+          { to: "/admin-progress", label: "Tabel Progres", icon: BarChart3 },
+        ]
+      : [
+          { to: "/guest-dashboard", label: "Dashboard", icon: LayoutDashboard },
+          { to: "/guest-table", label: "Tabel Renstra", icon: Table2 },
+        ];
 
   const handleSignOut = async () => {
     try {
@@ -51,7 +55,6 @@ export function AppSidebar({ onNavigate }: Props) {
   return (
     <>
       <aside className="flex h-full w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
-        {/* Brand */}
         <div className="px-5 py-8 border-b border-sidebar-border bg-gradient-to-b from-primary/5 to-transparent">
           <div className="flex flex-col gap-4">
             <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
@@ -65,13 +68,12 @@ export function AppSidebar({ onNavigate }: Props) {
                 Navigator
               </div>
               <div className="text-[10px] text-muted-foreground font-bold opacity-60 mt-0.5">
-                Monitoring 2026–2030
+                Monitoring 2026-2030
               </div>
             </div>
           </div>
         </div>
 
-        {/* CTA: Input Capaian (Admin only) */}
         {isAdmin && (
           <div className="px-4 pt-4 pb-2">
             <Button
@@ -84,39 +86,44 @@ export function AppSidebar({ onNavigate }: Props) {
           </div>
         )}
 
-        {/* Navigation */}
         <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
           <div className="px-3 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-sidebar-foreground/45 flex items-center justify-between">
             <span>Menu</span>
-            {role && (
+            {isResolvingRole ? (
+              <span className="text-[8px] tracking-normal text-muted-foreground">loading...</span>
+            ) : role ? (
               <span className="bg-primary/20 text-primary px-1.5 py-0.5 rounded text-[8px] tracking-normal capitalize">
                 {role}
               </span>
-            )}
+            ) : null}
           </div>
-          {NAV.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              onClick={onNavigate}
-              activeOptions={{ exact: true }}
-              activeProps={{
-                className:
-                  "bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-sidebar-primary",
-              }}
-              inactiveProps={{
-                className:
-                  "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 border-l-2 border-transparent",
-              }}
-              className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors"
-            >
-              <item.icon className="h-4 w-4 shrink-0" />
-              <span className="truncate">{item.label}</span>
-            </Link>
-          ))}
+
+          {isResolvingRole ? (
+            <div className="px-3 py-2 text-xs text-muted-foreground">Memuat role akun...</div>
+          ) : (
+            NAV.map((item) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                onClick={onNavigate}
+                activeOptions={{ exact: true }}
+                activeProps={{
+                  className:
+                    "bg-sidebar-accent text-sidebar-accent-foreground border-l-2 border-sidebar-primary",
+                }}
+                inactiveProps={{
+                  className:
+                    "text-sidebar-foreground/75 hover:bg-sidebar-accent/50 border-l-2 border-transparent",
+                }}
+                className="flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors"
+              >
+                <item.icon className="h-4 w-4 shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            ))
+          )}
         </nav>
 
-        {/* User footer */}
         <div className="px-5 py-4 border-t border-sidebar-border space-y-4">
           {user ? (
             <>
@@ -129,7 +136,7 @@ export function AppSidebar({ onNavigate }: Props) {
                     {user?.email}
                   </div>
                   <div className="text-[10px] text-sidebar-foreground/50 truncate uppercase">
-                    {role}
+                    {isResolvingRole ? "memuat role" : role}
                   </div>
                 </div>
               </div>

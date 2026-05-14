@@ -1,4 +1,4 @@
-import {
+﻿import {
   Outlet,
   Link,
   createRootRouteWithContext,
@@ -8,6 +8,7 @@ import {
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider } from "@/hooks/use-auth";
+import { AuthRoleRedirect } from "@/components/AuthRoleRedirect";
 
 import appCss from "../styles.css?url";
 
@@ -22,7 +23,7 @@ function NotFoundComponent() {
         <h1 className="text-7xl font-bold text-foreground">404</h1>
         <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+          The page you are looking for does not exist or has been moved.
         </p>
         <div className="mt-6">
           <Link
@@ -42,17 +43,17 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Renstra Monitoring 2025-2029" },
+      { title: "Renstra Monitoring 2026-2030" },
       {
         name: "description",
         content:
-          "Dashboard monitoring Rencana Strategis (Renstra) 2025-2029 dengan capaian indikator dan utilisasi anggaran.",
+          "Dashboard monitoring Rencana Strategis (Renstra) 2026-2030 dengan capaian indikator dan utilisasi anggaran.",
       },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Renstra Monitoring 2025-2029" },
+      { property: "og:title", content: "Renstra Monitoring 2026-2030" },
       {
         property: "og:description",
-        content: "Dashboard ERP untuk monitoring Renstra periode 2025-2029.",
+        content: "Dashboard ERP untuk monitoring Renstra periode 2026-2030.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -87,11 +88,12 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <AuthRoleRedirect />
         <Outlet />
         <Toaster richColors position="top-right" />
-      </QueryClientProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }

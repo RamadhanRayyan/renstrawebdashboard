@@ -1,8 +1,8 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
-import { useRenstra, renstraQueryOptions } from "@/hooks/use-renstra";
+import { useRenstra } from "@/hooks/use-renstra";
 import { ExportPdfButton } from "@/components/ExportPdfButton";
 import { useAuth } from "@/hooks/use-auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,11 +21,8 @@ export const Route = createFileRoute("/admin")({
     if (!session && typeof window !== "undefined") {
       throw redirect({ to: "/login" });
     }
-  },
-  loader: ({ context }) =>
-    context.queryClient.ensureQueryData(renstraQueryOptions),
-  head: () => ({
-    meta: [{ title: "Dashboard Admin — Renstra Monitoring" }],
+  },  head: () => ({
+    meta: [{ title: "Dashboard Admin â€” Renstra Monitoring" }],
   }),
   component: AdminDashboardPage,
 });
@@ -77,7 +74,7 @@ function AdminDashboardPage() {
           <div className="flex items-center gap-3">
             {isFetching && (
               <div className="text-[10px] text-muted-foreground animate-pulse mr-1 italic">
-                Menyinkronkan…
+                Menyinkronkanâ€¦
               </div>
             )}
             <Button
@@ -157,3 +154,4 @@ function AdminDashboardPage() {
     </>
   );
 }
+

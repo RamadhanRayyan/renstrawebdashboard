@@ -11,6 +11,10 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RenstraRouteImport } from './routes/renstra'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as GuestTableRouteImport } from './routes/guest-table'
+import { Route as GuestDashboardRouteImport } from './routes/guest-dashboard'
+import { Route as AdminProgressRouteImport } from './routes/admin-progress'
+import { Route as AdminDashboardRouteImport } from './routes/admin-dashboard'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 
@@ -22,6 +26,26 @@ const RenstraRoute = RenstraRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuestTableRoute = GuestTableRouteImport.update({
+  id: '/guest-table',
+  path: '/guest-table',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GuestDashboardRoute = GuestDashboardRouteImport.update({
+  id: '/guest-dashboard',
+  path: '/guest-dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminProgressRoute = AdminProgressRouteImport.update({
+  id: '/admin-progress',
+  path: '/admin-progress',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminDashboardRoute = AdminDashboardRouteImport.update({
+  id: '/admin-dashboard',
+  path: '/admin-dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -38,12 +62,20 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/admin-dashboard': typeof AdminDashboardRoute
+  '/admin-progress': typeof AdminProgressRoute
+  '/guest-dashboard': typeof GuestDashboardRoute
+  '/guest-table': typeof GuestTableRoute
   '/login': typeof LoginRoute
   '/renstra': typeof RenstraRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/admin-dashboard': typeof AdminDashboardRoute
+  '/admin-progress': typeof AdminProgressRoute
+  '/guest-dashboard': typeof GuestDashboardRoute
+  '/guest-table': typeof GuestTableRoute
   '/login': typeof LoginRoute
   '/renstra': typeof RenstraRoute
 }
@@ -51,20 +83,53 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/admin-dashboard': typeof AdminDashboardRoute
+  '/admin-progress': typeof AdminProgressRoute
+  '/guest-dashboard': typeof GuestDashboardRoute
+  '/guest-table': typeof GuestTableRoute
   '/login': typeof LoginRoute
   '/renstra': typeof RenstraRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/login' | '/renstra'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/admin-dashboard'
+    | '/admin-progress'
+    | '/guest-dashboard'
+    | '/guest-table'
+    | '/login'
+    | '/renstra'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/login' | '/renstra'
-  id: '__root__' | '/' | '/admin' | '/login' | '/renstra'
+  to:
+    | '/'
+    | '/admin'
+    | '/admin-dashboard'
+    | '/admin-progress'
+    | '/guest-dashboard'
+    | '/guest-table'
+    | '/login'
+    | '/renstra'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/admin-dashboard'
+    | '/admin-progress'
+    | '/guest-dashboard'
+    | '/guest-table'
+    | '/login'
+    | '/renstra'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  AdminDashboardRoute: typeof AdminDashboardRoute
+  AdminProgressRoute: typeof AdminProgressRoute
+  GuestDashboardRoute: typeof GuestDashboardRoute
+  GuestTableRoute: typeof GuestTableRoute
   LoginRoute: typeof LoginRoute
   RenstraRoute: typeof RenstraRoute
 }
@@ -83,6 +148,34 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guest-table': {
+      id: '/guest-table'
+      path: '/guest-table'
+      fullPath: '/guest-table'
+      preLoaderRoute: typeof GuestTableRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/guest-dashboard': {
+      id: '/guest-dashboard'
+      path: '/guest-dashboard'
+      fullPath: '/guest-dashboard'
+      preLoaderRoute: typeof GuestDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-progress': {
+      id: '/admin-progress'
+      path: '/admin-progress'
+      fullPath: '/admin-progress'
+      preLoaderRoute: typeof AdminProgressRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin-dashboard': {
+      id: '/admin-dashboard'
+      path: '/admin-dashboard'
+      fullPath: '/admin-dashboard'
+      preLoaderRoute: typeof AdminDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -105,6 +198,10 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  AdminDashboardRoute: AdminDashboardRoute,
+  AdminProgressRoute: AdminProgressRoute,
+  GuestDashboardRoute: GuestDashboardRoute,
+  GuestTableRoute: GuestTableRoute,
   LoginRoute: LoginRoute,
   RenstraRoute: RenstraRoute,
 }
