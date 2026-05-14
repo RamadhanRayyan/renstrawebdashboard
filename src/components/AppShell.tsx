@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+﻿import { useState, type ReactNode } from "react";
 import { AppSidebar } from "./AppSidebar";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,7 @@ export function AppShell({ title, subtitle, actions, children }: AppShellProps) 
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
-    <div className="min-h-screen flex w-full bg-slate-50/50 dark:bg-slate-950/50">
+    <div className="min-h-screen flex w-full bg-background">
       {/* Removed heavy blur background for performance */}
 
       {/* Desktop sidebar */}
@@ -32,8 +32,8 @@ export function AppShell({ title, subtitle, actions, children }: AppShellProps) 
       </Sheet>
 
       <div className="flex-1 flex flex-col min-w-0">
-        <header className="border-b border-border bg-background sticky top-0 z-10">
-          <div className="px-4 sm:px-6 lg:px-10 py-5 flex items-center gap-4">
+        <header className="border-b border-border/70 bg-card/90 backdrop-blur sticky top-0 z-10">
+          <div className="px-4 sm:px-6 lg:px-10 py-4 flex items-center gap-4">
             <Button
               variant="ghost"
               size="icon"
@@ -44,7 +44,7 @@ export function AppShell({ title, subtitle, actions, children }: AppShellProps) 
               <Menu className="h-5 w-5" />
             </Button>
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-display font-black uppercase tracking-tight text-foreground truncate">
+              <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold tracking-tight text-foreground truncate">
                 {title}
               </h1>
               {subtitle && (
@@ -67,4 +67,6 @@ export function AppShell({ title, subtitle, actions, children }: AppShellProps) 
     </div>
   );
 }
+
+
 

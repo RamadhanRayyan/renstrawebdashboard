@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
@@ -51,8 +51,8 @@ function AdminDashboardPage() {
     return (
       <AppShell title="Menunggu Persetujuan">
         <div className="flex flex-col items-center justify-center h-[60vh] text-center p-6 animate-in fade-in zoom-in duration-500">
-          <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
-            <Clock className="w-8 h-8 text-amber-600 animate-pulse" />
+          <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
+            <Clock className="w-8 h-8 text-emerald-600 animate-pulse" />
           </div>
           <h2 className="text-2xl font-bold mb-2">Akun Menunggu Persetujuan</h2>
           <p className="text-muted-foreground max-w-md">

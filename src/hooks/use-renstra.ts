@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+﻿import { useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient, queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { YEARS, type Program, type Year, emptyValues } from "@/lib/renstra-data";
@@ -187,6 +187,15 @@ export function useRenstra() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+
+  const updateProgramMut = useMutation({
+    mutationFn: async ({ id, nama }: { id: string; nama: string }) => {
+      const { error } = await supabase.from("renstra_programs").update({ nama }).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidate(),
+    onError: (e: Error) => toast.error(e.message),
+  });
   const addSasaranMut = useMutation({
     mutationFn: async ({ programId, nama }: { programId: string; nama: string }) => {
       const { error } = await supabase
@@ -352,6 +361,7 @@ export function useRenstra() {
     refetchRenstra,
     updateValue,
     addProgram: (nama: string) => addProgramMut.mutate(nama),
+    updateProgram: (id: string, nama: string) => updateProgramMut.mutate({ id, nama }),
     deleteProgram: (programId: string) => deleteProgramMut.mutate(programId),
     addSasaran: (programId: string, nama: string) => addSasaranMut.mutate({ programId, nama }),
     addSasaranRow: (payload: any) => addSasaranRowMut.mutate(payload),
@@ -373,6 +383,7 @@ export function useRenstra() {
     updateIndikator, 
     invalidate,
     addProgramMut,
+    updateProgramMut,
     deleteProgramMut,
     addSasaranMut,
     addSasaranRowMut,
@@ -381,5 +392,7 @@ export function useRenstra() {
     deleteIndikatorMut
   ]);
 }
+
+
 
 

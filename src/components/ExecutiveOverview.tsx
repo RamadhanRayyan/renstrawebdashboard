@@ -267,8 +267,8 @@ export function ExecutiveOverview({ programs, isGuest = false }: Props) {
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-            <div className="p-2 bg-indigo-500/10 rounded-xl">
-              <Calendar className="w-5 h-5 text-indigo-500" />
+            <div className="p-2 bg-emerald-500/10 rounded-xl">
+              <Calendar className="w-5 h-5 text-emerald-500" />
             </div>
             <Select
               value={String(selectedYear)}
@@ -286,8 +286,8 @@ export function ExecutiveOverview({ programs, isGuest = false }: Props) {
           </div>
 
           <div className="flex items-center gap-3 shrink-0">
-            <div className="p-2 bg-violet-500/10 rounded-xl">
-              <Zap className="w-5 h-5 text-violet-500" />
+            <div className="p-2 bg-emerald-500/10 rounded-xl">
+              <Zap className="w-5 h-5 text-emerald-500" />
             </div>
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
               <SelectTrigger className="w-44 bg-background/50 border-none shadow-sm font-bold text-sm h-11 rounded-xl">
@@ -325,7 +325,7 @@ export function ExecutiveOverview({ programs, isGuest = false }: Props) {
               label="Total Program"
               value={String(stats.totalProgram)}
               sub={`${stats.totalSasaran} Sasaran Strategis`}
-              color="bg-indigo-500/10 text-indigo-600"
+              color="bg-emerald-500/10 text-emerald-600"
             />
           </div>
           <div key="total-indikator">
@@ -334,7 +334,7 @@ export function ExecutiveOverview({ programs, isGuest = false }: Props) {
               label="Indikator Kinerja"
               value={String(stats.totalIndikator)}
               sub="Indikator Renstra Terpantau"
-              color="bg-violet-500/10 text-violet-600"
+              color="bg-emerald-500/10 text-emerald-600"
             />
           </div>
           <div key="overall-progress">
@@ -436,8 +436,8 @@ export function ExecutiveOverview({ programs, isGuest = false }: Props) {
             </div>
             <CardHeader>
               <CardTitle className="text-lg font-black flex items-center gap-3">
-                <div className="p-2 bg-indigo-500/10 rounded-lg">
-                  <Layers className="w-5 h-5 text-indigo-500" />
+                <div className="p-2 bg-emerald-500/10 rounded-lg">
+                  <Layers className="w-5 h-5 text-emerald-500" />
                 </div>
                 CAPAIAN PER BIDANG (%)
               </CardTitle>

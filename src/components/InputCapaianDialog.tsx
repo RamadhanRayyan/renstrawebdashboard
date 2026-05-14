@@ -162,37 +162,38 @@ export function InputCapaianDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden border shadow-lg rounded-[1rem] bg-white">
-        <div className="bg-slate-50/50 p-6 sm:p-8">
-          <DialogHeader className="mb-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-white shadow-sm">
-                <PlusCircle className="h-6 w-6" />
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0 overflow-hidden border-none shadow-2xl rounded-[1.5rem] bg-white">
+        <div className="bg-white flex-1 overflow-y-auto">
+          <div className="bg-gradient-to-br from-emerald-600 to-emerald-800 p-8 sm:p-10 text-white shrink-0">
+            <DialogHeader className="mb-0">
+              <div className="flex items-center gap-4 mb-4">
+                <div className="h-12 w-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-inner">
+                  <PlusCircle className="h-7 w-7 text-white" />
+                </div>
+                <div>
+                  <DialogTitle className="text-2xl font-black tracking-tight text-white">
+                    Input Capaian
+                  </DialogTitle>
+                  <DialogDescription className="font-bold text-emerald-100/80">
+                    Lengkapi form untuk memperbarui data monitoring.
+                  </DialogDescription>
+                </div>
               </div>
-              <div>
-                <DialogTitle className="text-2xl font-black tracking-tight text-slate-900">
-                  Input Capaian
-                </DialogTitle>
-                <DialogDescription className="font-bold text-slate-500">
-                  Lengkapi form untuk memperbarui data monitoring.
-                </DialogDescription>
+              
+              <div className="flex items-center gap-2 mt-6">
+                 {[1, 2, 3].map((s) => (
+                   <div key={s} className="flex-1 flex items-center gap-2">
+                      <div className={cn(
+                        "h-1.5 flex-1 rounded-full transition-all duration-500",
+                        step >= s ? "bg-white" : "bg-white/20"
+                      )} />
+                   </div>
+                 ))}
               </div>
-            </div>
-            
-            {/* Step Progress */}
-            <div className="flex items-center gap-2 mt-6">
-               {[1, 2, 3].map((s) => (
-                 <div key={s} className="flex-1 flex items-center gap-2">
-                    <div className={cn(
-                      "h-1.5 flex-1 rounded-full transition-all duration-500",
-                      step >= s ? "bg-primary" : "bg-slate-200"
-                    )} />
-                 </div>
-               ))}
-            </div>
-          </DialogHeader>
+            </DialogHeader>
+          </div>
 
-          <div className="space-y-6">
+          <div className="p-6 sm:p-8 space-y-8">
               {/* Step 1: Misi */}
               <div className="space-y-2">
                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">
@@ -204,7 +205,7 @@ export function InputCapaianDialog({
                       variant="outline"
                       role="combobox"
                       className={cn(
-                        "w-full justify-between h-14 px-5 rounded-2xl border-none bg-white shadow-sm font-bold text-slate-700",
+                        "w-full justify-between h-14 px-5 rounded-2xl border-slate-200 bg-white hover:bg-slate-50 hover:text-slate-700 shadow-sm font-bold text-slate-700",
                         !selectedMisi && "text-slate-400 font-medium"
                       )}
                     >
@@ -216,9 +217,9 @@ export function InputCapaianDialog({
                       <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[calc(600px-64px)] p-0 rounded-2xl border-none shadow-2xl overflow-hidden">
+                  <PopoverContent className="w-[calc(100vw-64px)] sm:w-[536px] p-0 rounded-2xl border-none shadow-2xl overflow-hidden">
                     <Command>
-                      <CommandInput placeholder="Cari misi..." className="h-12 border-none ring-0 focus:ring-0" />
+                      <CommandInput placeholder="Cari misi..." className="h-14 border-none ring-0 focus:ring-0 px-4" />
                       <CommandList>
                         <CommandEmpty>Misi tidak ditemukan.</CommandEmpty>
                         <CommandGroup>
@@ -263,7 +264,7 @@ export function InputCapaianDialog({
                         variant="outline"
                         role="combobox"
                         className={cn(
-                          "w-full justify-between h-14 px-5 rounded-2xl border-none bg-white shadow-sm font-bold text-slate-700",
+                          "w-full justify-between h-14 px-5 rounded-2xl border-slate-200 bg-white hover:bg-slate-50 hover:text-slate-700 shadow-sm font-bold text-slate-700",
                           !selectedIndikator && "text-slate-400 font-medium"
                         )}
                       >
@@ -277,7 +278,7 @@ export function InputCapaianDialog({
                         <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[calc(600px-64px)] p-0 rounded-2xl border-none shadow-2xl overflow-hidden">
+                    <PopoverContent className="w-[calc(100vw-64px)] sm:w-[536px] p-0 rounded-2xl border-none shadow-2xl overflow-hidden">
                       <Command>
                         <CommandInput placeholder="Cari indikator..." className="h-12 border-none" />
                         <CommandList>
@@ -354,14 +355,14 @@ export function InputCapaianDialog({
                       Nilai Capaian ({selectedIndikatorData?.satuan})
                     </Label>
                     <div className="relative">
-                       <Input
-                         type="number"
-                         value={value}
-                         onChange={(e) => setValue(e.target.value)}
-                         placeholder="0.0"
-                         className="h-14 px-5 pr-12 rounded-2xl border-none bg-white shadow-sm font-black text-lg text-primary placeholder:text-slate-200"
-                         autoFocus
-                       />
+                        <Input
+                          type="number"
+                          value={value}
+                          onChange={(e) => setValue(e.target.value)}
+                          placeholder="0.0"
+                          className="h-14 px-5 pr-14 rounded-2xl border border-emerald-200 bg-white shadow-sm font-black text-lg text-emerald-600 placeholder:text-emerald-100 focus-visible:ring-emerald-500 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                          autoFocus
+                        />
                        <div className="absolute right-4 top-1/2 -translate-y-1/2 font-bold text-slate-300 text-xs uppercase">
                           {selectedIndikatorData?.satuan}
                        </div>

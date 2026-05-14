@@ -6,6 +6,7 @@ import {
   LogOut,
   User,
   BarChart3,
+  Database,
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
@@ -30,6 +31,7 @@ export function AppSidebar({ onNavigate }: Props) {
       ? [
           { to: "/admin-dashboard", label: "Dashboard Admin", icon: LayoutDashboard },
           { to: "/admin-progress", label: "Tabel Progres", icon: BarChart3 },
+          { to: "/admin", label: "Kelola Renstra", icon: Database },
         ]
       : [
           { to: "/guest-dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -57,17 +59,17 @@ export function AppSidebar({ onNavigate }: Props) {
       <aside className="flex h-full w-64 shrink-0 flex-col bg-sidebar text-sidebar-foreground border-r border-sidebar-border">
         <div className="px-5 py-8 border-b border-sidebar-border bg-gradient-to-b from-primary/5 to-transparent">
           <div className="flex flex-col gap-4">
-            <div className="h-12 w-12 rounded-2xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
+            <div className="h-12 w-12 rounded-2xl bg-sidebar-primary flex items-center justify-center shadow-sm">
               <Target className="h-6 w-6 text-white" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] uppercase font-black tracking-[0.3em] text-primary/70">
+              <div className="text-[10px] uppercase font-semibold tracking-[0.3em] text-sidebar-primary/90">
                 Renstra
               </div>
-              <div className="text-lg font-black leading-tight tracking-tight text-foreground">
+              <div className="text-lg font-semibold leading-tight tracking-tight text-sidebar-foreground">
                 Navigator
               </div>
-              <div className="text-[10px] text-muted-foreground font-bold opacity-60 mt-0.5">
+              <div className="text-[10px] text-muted-foreground font-medium opacity-60 mt-0.5">
                 Monitoring 2026-2030
               </div>
             </div>
@@ -78,7 +80,7 @@ export function AppSidebar({ onNavigate }: Props) {
           <div className="px-4 pt-4 pb-2">
             <Button
               onClick={() => setIsInputOpen(true)}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-elegant h-10 gap-2"
+              className="w-full bg-sidebar-primary hover:bg-sidebar-primary/90 text-sidebar-primary-foreground font-medium shadow-elegant h-10 gap-2"
             >
               <Sparkles className="h-4 w-4" />
               Input Capaian
@@ -92,7 +94,7 @@ export function AppSidebar({ onNavigate }: Props) {
             {isResolvingRole ? (
               <span className="text-[8px] tracking-normal text-muted-foreground">loading...</span>
             ) : role ? (
-              <span className="bg-primary/20 text-primary px-1.5 py-0.5 rounded text-[8px] tracking-normal capitalize">
+              <span className="bg-sidebar-primary/15 text-sidebar-primary px-1.5 py-0.5 rounded text-[8px] tracking-normal capitalize">
                 {role}
               </span>
             ) : null}
@@ -159,3 +161,7 @@ export function AppSidebar({ onNavigate }: Props) {
     </>
   );
 }
+
+
+
+
